@@ -1482,3 +1482,76 @@ function parseReferralCode(text) {
 
   return match[1];
 }
+
+
+// ============================================================
+// BAB 7 — USER SESSION
+// ============================================================
+
+async function getSession(DB, whatsapp) {
+  const result = await DB.prepare(`
+    SELECT whatsapp, state, session_data
+    FROM user_sessions
+    WHERE whatsapp = ?
+  `).bind(whatsapp).first();
+
+  if (!result) {
+    return {
+      whatsapp,
+      state: "main",
+      data: {}
+    };
+  }
+
+  let data = {};
+
+  try {
+    data = JSON.parse(result.session_data || "{}");
+  } catch {
+    data = {};
+  }
+
+  return {
+    whatsapp: result.whatsapp,
+    state: result.state,
+    data
+  };
+}
+
+async function setSession(DB, whatsapp, state, data = {}) {
+  await DB.prepare(`
+    INSERT INTO user_sessions (
+      whatsapp,
+      state,
+      session_data,
+      updated_at
+    )
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(whatsapp)
+    DO UPDATE SET
+      state = excluded.state,
+      session_data = excluded.session_data,
+      updated_at = CURRENT_TIMESTAMP
+  `).bind(
+    whatsapp,
+    state,
+    JSON.stringify(data)
+  ).run();
+}
+
+async function clearSession(DB, whatsapp) {
+  await DB.prepare(`
+    INSERT INTO user_sessions (
+      whatsapp,
+      state,
+      session_data,
+      updated_at
+    )
+    VALUES (?, 'main', '{}', CURRENT_TIMESTAMP)
+    ON CONFLICT(whatsapp)
+    DO UPDATE SET
+      state = 'main',
+      session_data = '{}',
+      updated_at = CURRENT_TIMESTAMP
+  `).bind(whatsapp).run();
+}
