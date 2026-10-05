@@ -509,42 +509,36 @@ Status    : ${member.status === "active"
 }
 
 
-/**
- * ============================================
- * HALAMAN SALDO
- * ============================================
- */
+// ============================================================
+// BAB 7 — HALAMAN SALDO
+// ============================================================
+
 async function balancePage(member, env) {
-  const saldo = calculateBalance(
-    member.points
-  );
+  const balance = calculateBalance(member.points);
 
-  return `
----------------------------
-        💰 SALDO SAYA
----------------------------
-
-⭐ Poin  : ${formatNumber(member.points)}
-💵 Saldo : ${formatRupiah(saldo)}
-
-📌 Konversi:
-1.000 poin = Rp10
-
----------------------------
-        💸 TARIK SALDO
----------------------------
-
-Ketik:
-
-TARIK
-
-untuk melakukan penarikan saldo.
-
----------------------------
-0  = Kembali
-00 = Menu Utama
----------------------------
-`.trim();
+  return [
+    "---------------------------",
+    "       💰 SALDO SAYA",
+    "---------------------------",
+    "",
+    `ID MEMBER : ${safeText(member.member_id)}`,
+    `POIN      : ${formatNumber(member.points)}`,
+    `SALDO     : ${formatRupiah(balance)}`,
+    "",
+    "KONVERSI OTOMATIS",
+    "1.000 Poin = Rp10",
+    "",
+    "MENU:",
+    "",
+    "1. TARIK SALDO",
+    "2. KEMBALI",
+    "",
+    "Ketik nomor menu.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
 }
 
 
