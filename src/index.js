@@ -2020,6 +2020,125 @@ async function adminToggleBlock(DB, memberId) {
 }
 
 
+// ============================================================
+// BAB 8 — TAMBAH / KURANGI SALDO
+// ============================================================
+
+async function adminChangeBalance(
+  DB,
+  memberId,
+  amount,
+  mode
+) {
+  const member = await getMemberByMemberId(
+    DB,
+    String(memberId || "").trim()
+  );
+
+  if (!member) {
+    return {
+      success: false,
+      message: "Member tidak ditemukan."
+    };
+  }
+
+  const rupiah = Number(amount);
+
+  if (
+    !Number.isInteger(rupiah) ||
+    rupiah <= 0
+  ) {
+    return {
+      success: false,
+      message: "Nominal tidak valid."
+    };
+  }
+
+  const points = rupiah * 100;
+
+  if (mode === "kurangi") {
+    if (Number(member.points) < points) {
+      return {
+        success: false,
+        message:
+          "Saldo member tidak mencukupi untuk dikurangi."
+      };
+    }
+  }
+
+  const pointChange =
+    mode === "tambah"
+      ? points
+      : -points;
+
+  const transactionId =
+    generateTransactionId("ADM");
+
+  const result = await DB.batch([
+    DB.prepare(`
+      UPDATE members
+      SET
+        points = points + ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE member_id = ?
+        AND (
+              ? > 0
+              OR points >= ?
+            )
+    `).bind(
+      pointChange,
+      member.member_id,
+      pointChange,
+      points
+    ),
+
+    DB.prepare(`
+      INSERT INTO transactions (
+        transaction_id,
+        member_id,
+        type,
+        points,
+        amount,
+        description
+      )
+      VALUES (?, ?, 'ADMIN_ADJUSTMENT', ?, ?, ?)
+    `).bind(
+      transactionId,
+      member.member_id,
+      pointChange,
+      mode === "tambah"
+        ? rupiah
+        : -rupiah,
+      mode === "tambah"
+        ? `Admin menambah saldo ${formatRupiah(rupiah)}`
+        : `Admin mengurangi saldo ${formatRupiah(rupiah)}`
+    )
+  ]);
+
+  if (
+    !result[0] ||
+    result[0].meta.changes !== 1
+  ) {
+    return {
+      success: false,
+      message: "Perubahan saldo gagal."
+    };
+  }
+
+  const updated =
+    await getMemberByMemberId(
+      DB,
+      member.member_id
+    );
+
+  return {
+    success: true,
+    member: updated,
+    transactionId
+  };
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
