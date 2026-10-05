@@ -1212,6 +1212,40 @@ ${env.APP_DOWNLOAD_URL}
 }
 
 
+// ============================================================
+// BAB 9 — HALAMAN PRODUK
+// ============================================================
+
+function productPage(env) {
+  const catalogUrl =
+    env.WHATSAPP_CATALOG_URL ||
+    "";
+
+  return [
+    "---------------------------",
+    "        🛍️ PRODUK",
+    "---------------------------",
+    "",
+    "Silakan lihat produk HERBALINDO",
+    "melalui WhatsApp Catalog.",
+    "",
+    catalogUrl
+      ? `KATALOG:\n${catalogUrl}`
+      : "Link katalog belum dikonfigurasi.",
+    "",
+    "Setelah melakukan pembelian,",
+    "admin akan memverifikasi transaksi.",
+    "",
+    "Reward pembelian:",
+    "Rp500 / produk",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * LOGIN HARIAN
