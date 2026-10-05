@@ -2219,6 +2219,163 @@ async function adminWithdrawalList(DB) {
 }
 
 
+// ============================================================
+// BAB 8 — APPROVE / REJECT WITHDRAW
+// ============================================================
+
+async function processAdminWithdrawal(
+  DB,
+  withdrawalId,
+  action,
+  adminWhatsapp
+) {
+  const withdrawal =
+    await DB.prepare(`
+      SELECT
+        withdrawal_id,
+        member_id,
+        amount,
+        method,
+        account_number,
+        account_name,
+        status
+      FROM withdrawals
+      WHERE withdrawal_id = ?
+      LIMIT 1
+    `).bind(
+      withdrawalId
+    ).first();
+
+  if (!withdrawal) {
+    return "ID withdraw tidak ditemukan.";
+  }
+
+  if (withdrawal.status !== "pending") {
+    return [
+      "Withdraw sudah diproses.",
+      "",
+      `Status: ${withdrawal.status.toUpperCase()}`
+    ].join("\n");
+  }
+
+  const points =
+    Number(withdrawal.amount) * 100;
+
+  // --------------------------------------------------------
+  // APPROVE
+  // --------------------------------------------------------
+
+  if (action === "approve") {
+    await DB.prepare(`
+      UPDATE withdrawals
+      SET
+        status = 'approved',
+        processed_at = CURRENT_TIMESTAMP,
+        processed_by = ?
+      WHERE withdrawal_id = ?
+        AND status = 'pending'
+    `).bind(
+      adminWhatsapp,
+      withdrawalId
+    ).run();
+
+    return [
+      "---------------------------",
+      "   ✅ WITHDRAW APPROVED",
+      "---------------------------",
+      "",
+      `ID       : ${safeText(withdrawal.withdrawal_id)}`,
+      `Member   : ${safeText(withdrawal.member_id)}`,
+      `Nominal  : ${formatRupiah(withdrawal.amount)}`,
+      `Metode   : ${safeText(withdrawal.method)}`,
+      `Akun     : ${safeText(withdrawal.account_number)}`,
+      `Pemilik  : ${safeText(withdrawal.account_name)}`,
+      "",
+      "Status: APPROVED",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  // --------------------------------------------------------
+  // REJECT + REFUND
+  // --------------------------------------------------------
+
+  if (action === "reject") {
+    const transactionId =
+      generateTransactionId("REFUND");
+
+    const results = await DB.batch([
+      DB.prepare(`
+        UPDATE withdrawals
+        SET
+          status = 'rejected',
+          processed_at = CURRENT_TIMESTAMP,
+          processed_by = ?
+        WHERE withdrawal_id = ?
+          AND status = 'pending'
+      `).bind(
+        adminWhatsapp,
+        withdrawalId
+      ),
+
+      DB.prepare(`
+        UPDATE members
+        SET
+          points = points + ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE member_id = ?
+      `).bind(
+        points,
+        withdrawal.member_id
+      ),
+
+      DB.prepare(`
+        INSERT INTO transactions (
+          transaction_id,
+          member_id,
+          type,
+          points,
+          amount,
+          description
+        )
+        VALUES (?, ?, 'WITHDRAWAL_REFUND', ?, ?, ?)
+      `).bind(
+        transactionId,
+        withdrawal.member_id,
+        points,
+        withdrawal.amount,
+        `Refund withdraw ${withdrawal.withdrawal_id}`
+      )
+    ]);
+
+    if (
+      !results[0] ||
+      results[0].meta.changes !== 1
+    ) {
+      return "Withdraw gagal diproses atau sudah diproses sebelumnya.";
+    }
+
+    return [
+      "---------------------------",
+      "   ❌ WITHDRAW DITOLAK",
+      "---------------------------",
+      "",
+      `ID       : ${safeText(withdrawal.withdrawal_id)}`,
+      `Member   : ${safeText(withdrawal.member_id)}`,
+      `Nominal  : ${formatRupiah(withdrawal.amount)}`,
+      `Metode   : ${safeText(withdrawal.method)}`,
+      "",
+      "Status: REJECTED",
+      "",
+      "Saldo member telah dikembalikan.",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  return "Perintah tidak valid.";
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
