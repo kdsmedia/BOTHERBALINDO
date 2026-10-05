@@ -1966,6 +1966,60 @@ async function adminSearchMember(DB, keyword) {
 }
 
 
+// ============================================================
+// BAB 8 — BLOKIR / BUKA BLOKIR
+// ============================================================
+
+async function adminToggleBlock(DB, memberId) {
+  const member = await getMemberByMemberId(
+    DB,
+    String(memberId || "").trim()
+  );
+
+  if (!member) {
+    return "Member tidak ditemukan.";
+  }
+
+  // Jangan sampai admin memblokir dirinya sendiri.
+  if (
+    normalizePhone(member.whatsapp) ===
+    normalizePhone("6285813899649")
+  ) {
+    return "Akun admin tidak dapat diblokir.";
+  }
+
+  const newStatus =
+    member.status === "blocked"
+      ? "active"
+      : "blocked";
+
+  await DB.prepare(`
+    UPDATE members
+    SET
+      status = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE member_id = ?
+  `).bind(
+    newStatus,
+    member.member_id
+  ).run();
+
+  return [
+    "---------------------------",
+    "      STATUS MEMBER",
+    "---------------------------",
+    "",
+    `ID MEMBER : ${safeText(member.member_id)}`,
+    `NAMA      : ${safeText(member.name)}`,
+    "",
+    `STATUS BARU: ${newStatus.toUpperCase()}`,
+    "",
+    "Perubahan berhasil disimpan.",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
