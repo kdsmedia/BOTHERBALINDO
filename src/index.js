@@ -368,8 +368,8 @@ function mainMenu() {
 👤 PROFIL
 💰 SALDO
 🛍️ PRODUK
-📲 DOWNLOAD APLIKASI
 📅 LOGIN HARIAN
+📲 DOWNLOAD APLIKASI
 
 ---------------------------
 Ketik nama menu yang ingin
