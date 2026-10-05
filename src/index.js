@@ -210,77 +210,85 @@ async function processMessage(message, value, env) {
      * DAFTAR 123456
      */
     const referralCode =
-      parseReferralCode(text);
+      parseReferralCommand(text);
 
-    /*
-     * Pastikan ID referral memang milik
-     * member yang sudah terdaftar.
-     */
-    let validReferral = null;
-
-    if (referralCode) {
-      validReferral = await env.DB
-        .prepare(`
-          SELECT member_id
-          FROM members
-          WHERE member_id = ?
-          AND status = 'active'
-          LIMIT 1
-        `)
-        .bind(referralCode)
-        .first();
-    }
-
-    const newMemberId =
-      await generateMemberId(env.DB);
-
-    await env.DB
-      .prepare(`
-        INSERT INTO members (
-          member_id,
-          whatsapp,
-          name,
-          points,
-          status,
-          referred_by
-        )
-        VALUES (?, ?, ?, 0, 'active', ?)
-      `)
-      .bind(
-        newMemberId,
+    const registration =
+      await registerMember(
+        env.DB,
         whatsapp,
         profileName,
-        validReferral
-          ? validReferral.member_id
-          : null
-      )
-      .run();
-
-    member =
-      await getMemberByWhatsApp(
-        env.DB,
-        whatsapp
+        referralCode
       );
 
-    /*
-     * Berikan reward kepada pengundang
-     * setelah member berhasil dibuat.
-     */
-    if (validReferral) {
-      await processReferralReward(
-        env.DB,
-        member
-      );
-
-      /*
-       * Ambil data terbaru.
-       */
-      member =
-        await getMemberByWhatsApp(
-          env.DB,
-          whatsapp
+    if (!registration.success) {
+      if (
+        registration.reason ===
+        "already_registered"
+      ) {
+        await sendText(
+          env,
+          whatsapp,
+          alreadyRegisteredPage(
+            registration.member
+          )
         );
+
+        return;
+      }
+
+      if (
+        registration.reason ===
+        "invalid_referral"
+      ) {
+        await sendText(
+          env,
+          whatsapp,
+          invalidReferralPage()
+        );
+
+        return;
+      }
+
+      if (
+        registration.reason ===
+        "self_referral"
+      ) {
+        await sendText(
+          env,
+          whatsapp,
+          selfReferralPage()
+        );
+
+        return;
+      }
+
+      if (
+        registration.reason ===
+        "inviter_blocked"
+      ) {
+        await sendText(
+          env,
+          whatsapp,
+          blockedInviterPage()
+        );
+
+        return;
+      }
+
+      return;
     }
+
+    member = registration.member;
+
+    await sendText(
+      env,
+      whatsapp,
+      registrationSuccessPage(
+        registration
+      )
+    );
+
+    return;
   }
 
   /*
@@ -1778,7 +1786,7 @@ async function createMember(
   name
 ) {
   const memberId =
-    await generateMemberId(DB);
+    await generateUniqueMemberId(DB);
 
   await DB
     .prepare(`
@@ -1810,27 +1818,35 @@ async function createMember(
  * GENERATE ID MEMBER 6 DIGIT
  * ============================================
  */
-async function generateMemberId(DB) {
-  for (let attempt = 0; attempt < 20; attempt++) {
+// --------------------------------------------
+// BUAT ID MEMBER 6 DIGIT
+// --------------------------------------------
 
-    const number =
-      Math.floor(
-        100000 +
-        Math.random() * 900000
-      ).toString();
+function generateMemberId() {
+  return String(
+    Math.floor(
+      100000 + Math.random() * 900000
+    )
+  );
+}
 
-    const exists = await DB
-      .prepare(`
-        SELECT member_id
-        FROM members
-        WHERE member_id = ?
-        LIMIT 1
-      `)
-      .bind(number)
-      .first();
 
-    if (!exists) {
-      return number;
+// --------------------------------------------
+// MEMASTIKAN ID MEMBER TIDAK DUPLIKAT
+// --------------------------------------------
+
+async function generateUniqueMemberId(DB) {
+  for (let i = 0; i < 20; i++) {
+    const memberId = generateMemberId();
+
+    const existing =
+      await getMemberByMemberId(
+        DB,
+        memberId
+      );
+
+    if (!existing) {
+      return memberId;
     }
   }
 
@@ -3874,161 +3890,29 @@ function jsonResponse(
 }
 
 
-/**
- * ============================================
- * REFERRAL
- * ============================================
- *
- * Reward pengundang:
- * Rp1.000 = 100.000 poin
- *
- * Reward hanya diberikan satu kali untuk
- * setiap member baru yang berhasil terdaftar.
- * ============================================
- */
-async function processReferralReward(
-  DB,
-  newMember
-) {
-  if (!newMember.referred_by) {
-    return;
-  }
+// ============================================
+// BAB 12
+// SISTEM UNDANG TEMAN / REFERRAL
+// ============================================
 
-  /*
-   * Jangan memberikan reward dua kali.
-   */
-  if (Number(newMember.referral_rewarded) === 1) {
-    return;
-  }
-
-  /*
-   * Cari member yang mengundang.
-   */
-  const inviter = await DB
-    .prepare(`
-      SELECT *
-      FROM members
-      WHERE member_id = ?
-      LIMIT 1
-    `)
-    .bind(newMember.referred_by)
-    .first();
-
-  /*
-   * Jika ID referral tidak ditemukan,
-   * tidak ada reward.
-   */
-  if (!inviter) {
-    return;
-  }
-
-  /*
-   * Jangan memberi reward kepada akun yang
-   * mengundang dirinya sendiri.
-   */
-  if (
-    inviter.member_id === newMember.member_id
-  ) {
-    return;
-  }
-
-  const rewardAmount = 1000;
-  const rewardPoints = 100000;
-
-  /*
-   * Tambahkan poin kepada pengundang.
-   */
-  await DB
-    .prepare(`
-      UPDATE members
-      SET
-        points = points + ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE member_id = ?
-    `)
-    .bind(
-      rewardPoints,
-      inviter.member_id
-    )
-    .run();
-
-  /*
-   * Tandai bahwa member baru sudah
-   * menghasilkan reward referral.
-   */
-  await DB
-    .prepare(`
-      UPDATE members
-      SET
-        referral_rewarded = 1,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE member_id = ?
-    `)
-    .bind(
-      newMember.member_id
-    )
-    .run();
-
-  /*
-   * Catat transaksi referral.
-   */
-  const transactionId =
-    generateTransactionId("REF");
-
-  await DB
-    .prepare(`
-      INSERT INTO transactions (
-        transaction_id,
-        member_id,
-        type,
-        points,
-        amount,
-        description
-      )
-      VALUES (?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      transactionId,
-      inviter.member_id,
-      "referral",
-      rewardPoints,
-      rewardAmount,
-      `Reward mengundang member ${newMember.member_id}`
-    )
-    .run();
-}
+const REFERRAL_REWARD_RUPIAH = 1000;
+const REFERRAL_REWARD_POINTS = 100000;
 
 
-/**
- * ============================================
- * HALAMAN UNDANG TEMAN
- * ============================================
- */
-function referralPage(
-  member,
-  env
-) {
-  const referralId =
-    member.member_id;
+// --------------------------------------------
+// HALAMAN UNDANG TEMAN
+// --------------------------------------------
 
-  const botNumber =
-    normalizePhone(
-      env.WHATSAPP_BOT_NUMBER || ""
-    );
-
-  const referralText =
-    encodeURIComponent(
-      `DAFTAR ${referralId}`
-    );
+function referralPage(member, env) {
+  const botNumber = normalizePhone(
+    env.WHATSAPP_BOT_NUMBER || ""
+  );
 
   let referralLink = "";
 
   if (botNumber) {
     referralLink =
-      `https://wa.me/${botNumber}?text=${referralText}`;
-  } else {
-    referralLink =
-      `Kirim pesan "DAFTAR ${referralId}" ke nomor bot HERBALINDO.`;
+      `https://wa.me/${botNumber}?text=DAFTAR%20${member.member_id}`;
   }
 
   return `
@@ -4036,65 +3920,510 @@ function referralPage(
        👥 UNDANG TEMAN
 ---------------------------
 
-🎁 Reward undang teman:
+Nama:
+${safeText(member.name)}
 
-💵 Rp1.000
-⭐ 100.000 poin
+ID Member:
+${member.member_id}
 
-━━━━━━━━━━━━━━━━━━
+🎁 BONUS REFERRAL
 
-🆔 ID Referral Anda:
+Undang teman dan dapatkan:
 
-${referralId}
+Rp${formatNumber(REFERRAL_REWARD_RUPIAH)}
+atau
+${formatNumber(REFERRAL_REWARD_POINTS)} poin
 
-━━━━━━━━━━━━━━━━━━
+Setiap teman baru harus
+melakukan pendaftaran melalui
+ID referral Anda.
 
-🔗 LINK UNDANGAN:
+ID Referral Anda:
+${member.member_id}
 
+${
+    referralLink
+        ? `
+Link Undangan:
 ${referralLink}
+`
+        : ""
+}
 
-━━━━━━━━━━━━━━━━━━
+Cara teman mendaftar:
 
-Teman Anda harus mendaftar
-melalui link/kode referral
-tersebut.
+DAFTAR ${member.member_id}
+
+Contoh:
+
+DAFTAR 123456
+
+⚠️ Satu nomor WhatsApp
+hanya dapat memiliki
+satu akun member.
+
+Bonus referral hanya diberikan
+satu kali untuk setiap member
+baru yang berhasil terdaftar.
 
 ---------------------------
-0  = Kembali
-00 = Menu Utama
+
+0. Kembali
+00. Menu Utama
 ---------------------------
-`.trim();
+`;
 }
 
 
-/**
- * ============================================
- * PARSE KODE REFERRAL
- * ============================================
- *
- * Contoh:
- *
- * DAFTAR 123456
- * REF 123456
- * REFERRAL 123456
- * ============================================
- */
-function parseReferralCode(text) {
-  const value =
-    String(text || "")
-      .trim()
-      .toUpperCase();
+// --------------------------------------------
+// PARSE KODE REFERRAL
+// --------------------------------------------
 
-  const match =
-    value.match(
-      /^(?:DAFTAR|REF|REFERRAL)\s+(\d{6})$/
-    );
+function parseReferralCommand(text) {
+  const command = normalizeCommand(text);
 
-  if (!match) {
-    return null;
+  const patterns = [
+    /^DAFTAR\s+(\d{6})$/,
+    /^REF\s+(\d{6})$/,
+    /^REFERRAL\s+(\d{6})$/
+  ];
+
+  for (const pattern of patterns) {
+    const match = command.match(pattern);
+
+    if (match) {
+      return match[1];
+    }
   }
 
-  return match[1];
+  return null;
+}
+
+
+// --------------------------------------------
+// BUAT MEMBER BARU DENGAN REFERRAL
+// --------------------------------------------
+
+async function registerMember(
+  DB,
+  whatsapp,
+  name,
+  referralId = null
+) {
+  const normalizedWhatsapp =
+    normalizePhone(whatsapp);
+
+  // ----------------------------------------
+  // CEK NOMOR SUDAH TERDAFTAR
+  // ----------------------------------------
+
+  const existing =
+    await getMemberByWhatsApp(
+      DB,
+      normalizedWhatsapp
+    );
+
+  if (existing) {
+    return {
+      success: false,
+      reason: "already_registered",
+      member: existing
+    };
+  }
+
+  // ----------------------------------------
+  // VALIDASI REFERRAL
+  // ----------------------------------------
+
+  let inviter = null;
+
+  if (referralId) {
+    inviter =
+      await getMemberByMemberId(
+        DB,
+        referralId
+      );
+
+    if (!inviter) {
+      return {
+        success: false,
+        reason: "invalid_referral"
+      };
+    }
+
+    if (
+      normalizePhone(inviter.whatsapp) ===
+      normalizedWhatsapp
+    ) {
+      return {
+        success: false,
+        reason: "self_referral"
+      };
+    }
+
+    if (inviter.status !== "active") {
+      return {
+        success: false,
+        reason: "inviter_blocked"
+      };
+    }
+  }
+
+  // ----------------------------------------
+  // GENERATE MEMBER ID
+  // ----------------------------------------
+
+  const newMemberId =
+    await generateUniqueMemberId(DB);
+
+  // ----------------------------------------
+  // DATA MEMBER BARU
+  // ----------------------------------------
+
+  const referredBy =
+    inviter
+      ? inviter.member_id
+      : null;
+
+  // ----------------------------------------
+  // BUAT MEMBER
+  // ----------------------------------------
+
+  await DB
+    .prepare(`
+      INSERT INTO members (
+        member_id,
+        whatsapp,
+        name,
+        points,
+        status,
+        referred_by,
+        referral_rewarded
+      )
+      VALUES (?, ?, ?, 0, 'active', ?, 0)
+    `)
+    .bind(
+      newMemberId,
+      normalizedWhatsapp,
+      name,
+      referredBy
+    )
+    .run();
+
+  const newMember =
+    await getMemberByMemberId(
+      DB,
+      newMemberId
+    );
+
+  // ----------------------------------------
+  // TANPA REFERRAL
+  // ----------------------------------------
+
+  if (!inviter) {
+    return {
+      success: true,
+      member: newMember,
+      referral: false
+    };
+  }
+
+  // ----------------------------------------
+  // BERIKAN BONUS REFERRAL
+  //
+  // Semua operasi bonus dilakukan dalam
+  // satu DB.batch() agar atomik.
+  // ----------------------------------------
+
+  const referralTransactionId =
+    `REF-${newMemberId}`;
+
+  try {
+    await DB.batch([
+      // Catat reward referral.
+      //
+      // UNIQUE(referred_member_id)
+      // mencegah reward ganda.
+      DB
+        .prepare(`
+          INSERT INTO referral_rewards (
+            referred_member_id,
+            inviter_member_id,
+            reward_points
+          )
+          VALUES (?, ?, ?)
+        `)
+        .bind(
+          newMemberId,
+          inviter.member_id,
+          REFERRAL_REWARD_POINTS
+        ),
+
+      // Tambahkan poin kepada pengundang.
+      DB
+        .prepare(`
+          UPDATE members
+          SET
+            points = points + ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE member_id = ?
+            AND status = 'active'
+        `)
+        .bind(
+          REFERRAL_REWARD_POINTS,
+          inviter.member_id
+        ),
+
+      // Tandai referral sudah mendapatkan
+      // bonus.
+      DB
+        .prepare(`
+          UPDATE members
+          SET
+            referral_rewarded = 1,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE member_id = ?
+            AND referral_rewarded = 0
+        `)
+        .bind(
+          newMemberId
+        ),
+
+      // Catat transaksi.
+      DB
+        .prepare(`
+          INSERT INTO transactions (
+            transaction_id,
+            member_id,
+            type,
+            points,
+            amount,
+            description
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          referralTransactionId,
+          inviter.member_id,
+          "REFERRAL_REWARD",
+          REFERRAL_REWARD_POINTS,
+          REFERRAL_REWARD_RUPIAH,
+          `Bonus referral member ${newMemberId}`
+        )
+    ]);
+  } catch (error) {
+    // Jika bonus gagal, member baru tetap
+    // ada tetapi referral tidak dianggap
+    // berhasil.
+    return {
+      success: true,
+      member: newMember,
+      referral: false,
+      referralError: true
+    };
+  }
+
+  // ----------------------------------------
+  // AMBIL DATA MEMBER TERBARU
+  // ----------------------------------------
+
+  const updatedInviter =
+    await getMemberByMemberId(
+      DB,
+      inviter.member_id
+    );
+
+  return {
+    success: true,
+
+    member: newMember,
+
+    referral: true,
+
+    inviter: updatedInviter,
+
+    rewardRupiah:
+      REFERRAL_REWARD_RUPIAH,
+
+    rewardPoints:
+      REFERRAL_REWARD_POINTS
+  };
+}
+
+
+// --------------------------------------------
+// HALAMAN REGISTRASI BERHASIL
+// --------------------------------------------
+
+function registrationSuccessPage(result) {
+  const member = result.member;
+
+  let referralMessage = "";
+
+  if (result.referral && result.inviter) {
+    referralMessage = `
+🎁 Referral berhasil.
+
+Pengundang:
+${safeText(result.inviter.name)}
+
+ID Pengundang:
+${result.inviter.member_id}
+
+Bonus pengundang:
+Rp${formatNumber(result.rewardRupiah)}
+
+${formatNumber(result.rewardPoints)} poin
+`;
+  }
+
+  return `
+---------------------------
+       ✅ PENDAFTARAN
+---------------------------
+
+Pendaftaran berhasil.
+
+Nama:
+${safeText(member.name)}
+
+ID Member:
+${member.member_id}
+
+WhatsApp:
+${formatPhone(member.whatsapp)}
+
+Saldo:
+Rp0
+
+Poin:
+0
+
+${referralMessage}
+
+Selamat bergabung di
+HERBALINDO.
+
+Ketik:
+
+00
+
+untuk membuka Menu Utama.
+
+---------------------------
+`;
+}
+
+
+// --------------------------------------------
+// PESAN JIKA SUDAH TERDAFTAR
+// --------------------------------------------
+
+function alreadyRegisteredPage(member) {
+  return `
+---------------------------
+     ⚠️ SUDAH TERDAFTAR
+---------------------------
+
+Nomor WhatsApp ini sudah
+terdaftar sebagai member.
+
+Nama:
+${safeText(member.name)}
+
+ID Member:
+${member.member_id}
+
+Satu nomor WhatsApp hanya
+dapat memiliki satu akun.
+
+Ketik:
+
+00
+
+untuk Menu Utama.
+
+---------------------------
+`;
+}
+
+
+// --------------------------------------------
+// PESAN REFERRAL TIDAK VALID
+// --------------------------------------------
+
+function invalidReferralPage() {
+  return `
+---------------------------
+       ⚠️ REFERRAL
+---------------------------
+
+ID referral tidak ditemukan.
+
+Pastikan ID referral terdiri
+dari 6 digit dan merupakan
+ID member HERBALINDO yang valid.
+
+Contoh:
+
+DAFTAR 123456
+
+---------------------------
+
+0. Kembali
+00. Menu Utama
+---------------------------
+`;
+}
+
+
+// --------------------------------------------
+// PESAN SELF REFERRAL
+// --------------------------------------------
+
+function selfReferralPage() {
+  return `
+---------------------------
+       ⚠️ REFERRAL
+---------------------------
+
+Anda tidak dapat menggunakan
+ID referral milik sendiri.
+
+Gunakan ID referral milik
+member lain.
+
+---------------------------
+
+0. Kembali
+00. Menu Utama
+---------------------------
+`;
+}
+
+
+// --------------------------------------------
+// PESAN INVITER DIBLOKIR
+// --------------------------------------------
+
+function blockedInviterPage() {
+  return `
+---------------------------
+       ⚠️ REFERRAL
+---------------------------
+
+Member pemilik ID referral
+tersebut sedang diblokir.
+
+Silakan gunakan ID referral
+member lain yang aktif.
+
+---------------------------
+
+0. Kembali
+00. Menu Utama
+---------------------------
+`;
 }
 
 
