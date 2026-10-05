@@ -223,3 +223,33 @@ ON purchases(status);
 
 CREATE INDEX IF NOT EXISTS idx_purchases_reward
 ON purchases(reward_given);
+
+
+-- ============================================
+-- BAB 12
+-- SISTEM REFERRAL / UNDANG TEMAN
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS referral_rewards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    referred_member_id TEXT NOT NULL UNIQUE,
+
+    inviter_member_id TEXT NOT NULL,
+
+    reward_points INTEGER NOT NULL DEFAULT 100000,
+
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (referred_member_id)
+        REFERENCES members(member_id),
+
+    FOREIGN KEY (inviter_member_id)
+        REFERENCES members(member_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_referral_rewards_inviter
+ON referral_rewards(inviter_member_id);
+
+CREATE INDEX IF NOT EXISTS idx_referral_rewards_referred
+ON referral_rewards(referred_member_id);
