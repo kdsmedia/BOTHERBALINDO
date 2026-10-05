@@ -86,6 +86,17 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ============================================================
+-- BAB 7 — SESSION / STATE TARIK SALDO
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    whatsapp TEXT PRIMARY KEY,
+    state TEXT NOT NULL DEFAULT 'main',
+    session_data TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ============================================
 -- PENGATURAN DEFAULT
 -- ============================================
@@ -147,3 +158,6 @@ ON withdrawals(member_id);
 
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status
 ON withdrawals(status);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_updated
+ON user_sessions(updated_at);
