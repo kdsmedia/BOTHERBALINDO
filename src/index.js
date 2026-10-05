@@ -330,6 +330,9 @@ async function processMessage(message, value, env) {
   // ------------------------------------------------------------
   // 0 = Kembali
   // ------------------------------------------------------------
+  //
+  // Harus diproses SEBELUM blok session withdrawal agar
+  // pengguna dapat keluar dari proses penarikan kapan saja.
 
   if (command === "0") {
     await clearSession(env.DB, member.whatsapp);
