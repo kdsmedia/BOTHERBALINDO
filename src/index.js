@@ -640,6 +640,32 @@ function withdrawalAccountPage(method, amount) {
 }
 
 
+// ============================================================
+// BAB 7 — NAMA PEMILIK AKUN
+// ============================================================
+
+function withdrawalAccountNamePage(method, amount, accountNumber) {
+  return [
+    "---------------------------",
+    "     NAMA PEMILIK AKUN",
+    "---------------------------",
+    "",
+    `Metode : ${method}`,
+    `Nominal: ${formatRupiah(amount)}`,
+    `Akun   : ${safeText(accountNumber)}`,
+    "",
+    "Kirim NAMA PEMILIK akun.",
+    "",
+    "Contoh:",
+    "BUDI SANTOSO",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * DOWNLOAD APLIKASI
