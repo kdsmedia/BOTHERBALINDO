@@ -194,15 +194,89 @@ async function processMessage(message, value, env) {
    * ==========================================
    */
   if (!member) {
+
     const profileName =
       value.contacts?.[0]?.profile?.name ||
       "Member";
 
-    member = await createMember(
-      env.DB,
-      whatsapp,
-      profileName
-    );
+    /*
+     * Cek apakah pesan berisi referral.
+     *
+     * Contoh:
+     * DAFTAR 123456
+     */
+    const referralCode =
+      parseReferralCode(text);
+
+    /*
+     * Pastikan ID referral memang milik
+     * member yang sudah terdaftar.
+     */
+    let validReferral = null;
+
+    if (referralCode) {
+      validReferral = await env.DB
+        .prepare(`
+          SELECT member_id
+          FROM members
+          WHERE member_id = ?
+          AND status = 'active'
+          LIMIT 1
+        `)
+        .bind(referralCode)
+        .first();
+    }
+
+    const newMemberId =
+      await generateMemberId(env.DB);
+
+    await env.DB
+      .prepare(`
+        INSERT INTO members (
+          member_id,
+          whatsapp,
+          name,
+          points,
+          status,
+          referred_by
+        )
+        VALUES (?, ?, ?, 0, 'active', ?)
+      `)
+      .bind(
+        newMemberId,
+        whatsapp,
+        profileName,
+        validReferral
+          ? validReferral.member_id
+          : null
+      )
+      .run();
+
+    member =
+      await getMemberByWhatsApp(
+        env.DB,
+        whatsapp
+      );
+
+    /*
+     * Berikan reward kepada pengundang
+     * setelah member berhasil dibuat.
+     */
+    if (validReferral) {
+      await processReferralReward(
+        env.DB,
+        member
+      );
+
+      /*
+       * Ambil data terbaru.
+       */
+      member =
+        await getMemberByWhatsApp(
+          env.DB,
+          whatsapp
+        );
+    }
   }
 
   /*
