@@ -854,6 +854,318 @@ function withdrawalSuccessPage(result, newBalance) {
 }
 
 
+// ============================================================
+// BAB 7 — WITHDRAWAL HANDLER
+// ============================================================
+
+async function handleWithdrawal(DB, member, text, env) {
+  const command = normalizeCommand(text);
+  const session = await getSession(DB, member.whatsapp);
+
+  // --------------------------------------------------------
+  // MULAI TARIK SALDO
+  // --------------------------------------------------------
+
+  if (
+    command === "TARIK" ||
+    command === "TARIK SALDO"
+  ) {
+    await setSession(
+      DB,
+      member.whatsapp,
+      "withdraw_amount",
+      {}
+    );
+
+    return withdrawalAmountPage();
+  }
+
+  // --------------------------------------------------------
+  // HALAMAN SALDO -> PILIH TARIK
+  // --------------------------------------------------------
+
+  if (
+    session.state === "balance" &&
+    command === "1"
+  ) {
+    await setSession(
+      DB,
+      member.whatsapp,
+      "withdraw_amount",
+      {}
+    );
+
+    return withdrawalAmountPage();
+  }
+
+  // --------------------------------------------------------
+  // PILIH NOMINAL
+  // --------------------------------------------------------
+
+  if (session.state === "withdraw_amount") {
+    const choice = Number(command);
+
+    if (
+      !Number.isInteger(choice) ||
+      choice < 1 ||
+      choice > WITHDRAWAL_AMOUNTS.length
+    ) {
+      return [
+        "Pilihan tidak valid.",
+        "",
+        withdrawalAmountPage()
+      ].join("\n");
+    }
+
+    const amount =
+      WITHDRAWAL_AMOUNTS[choice - 1];
+
+    const balance =
+      calculateBalance(member.points);
+
+    if (balance < amount) {
+      return [
+        "---------------------------",
+        "     SALDO TIDAK CUKUP",
+        "---------------------------",
+        "",
+        `Saldo Anda : ${formatRupiah(balance)}`,
+        `Penarikan  : ${formatRupiah(amount)}`,
+        "",
+        "Silakan pilih nominal yang",
+        "sesuai dengan saldo Anda.",
+        "",
+        "0. Kembali",
+        "00. Menu Utama",
+        "---------------------------"
+      ].join("\n");
+    }
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "withdraw_method",
+      {
+        amount
+      }
+    );
+
+    return withdrawalMethodPage(amount);
+  }
+
+  // --------------------------------------------------------
+  // PILIH METODE
+  // --------------------------------------------------------
+
+  if (session.state === "withdraw_method") {
+    const methods = {
+      "1": "DANA",
+      "2": "OVO",
+      "3": "GOPAY"
+    };
+
+    const method = methods[command];
+
+    if (!method) {
+      return [
+        "Pilihan metode tidak valid.",
+        "",
+        withdrawalMethodPage(session.data.amount)
+      ].join("\n");
+    }
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "withdraw_account",
+      {
+        amount: session.data.amount,
+        method
+      }
+    );
+
+    return withdrawalAccountPage(
+      method,
+      session.data.amount
+    );
+  }
+
+  // --------------------------------------------------------
+  // INPUT NOMOR AKUN
+  // --------------------------------------------------------
+
+  if (session.state === "withdraw_account") {
+    const accountNumber =
+      String(text || "").trim();
+
+    const digits =
+      accountNumber.replace(/\D/g, "");
+
+    if (
+      digits.length < 8 ||
+      digits.length > 20
+    ) {
+      return [
+        "Nomor akun tidak valid.",
+        "",
+        "Kirim nomor DANA / OVO / GOPAY",
+        "yang benar.",
+        "",
+        "Contoh: 081234567890"
+      ].join("\n");
+    }
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "withdraw_account_name",
+      {
+        amount: session.data.amount,
+        method: session.data.method,
+        accountNumber: digits
+      }
+    );
+
+    return withdrawalAccountNamePage(
+      session.data.method,
+      session.data.amount,
+      digits
+    );
+  }
+
+  // --------------------------------------------------------
+  // INPUT NAMA PEMILIK
+  // --------------------------------------------------------
+
+  if (
+    session.state === "withdraw_account_name"
+  ) {
+    const accountName =
+      String(text || "").trim();
+
+    if (
+      accountName.length < 2 ||
+      accountName.length > 100
+    ) {
+      return [
+        "Nama pemilik tidak valid.",
+        "",
+        "Silakan kirim nama pemilik",
+        "akun yang benar."
+      ].join("\n");
+    }
+
+    const withdrawalId =
+      generateWithdrawalId();
+
+    const data = {
+      amount: session.data.amount,
+      method: session.data.method,
+      accountNumber: session.data.accountNumber,
+      accountName,
+      withdrawalId
+    };
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "withdraw_confirm",
+      data
+    );
+
+    return withdrawalConfirmationPage(
+      member,
+      data
+    );
+  }
+
+  // --------------------------------------------------------
+  // KONFIRMASI
+  // --------------------------------------------------------
+
+  if (session.state === "withdraw_confirm") {
+    if (command === "1" || command === "YA") {
+
+      const result =
+        await createWithdrawal(
+          DB,
+          member,
+          session.data
+        );
+
+      if (!result.success) {
+        await clearSession(
+          DB,
+          member.whatsapp
+        );
+
+        return [
+          "---------------------------",
+          "   ❌ PENARIKAN GAGAL",
+          "---------------------------",
+          "",
+          safeText(result.message),
+          "",
+          "00. Menu Utama",
+          "---------------------------"
+        ].join("\n");
+      }
+
+      const updatedMember =
+        await getMemberByMemberId(
+          DB,
+          member.member_id
+        );
+
+      await clearSession(
+        DB,
+        member.whatsapp
+      );
+
+      return withdrawalSuccessPage(
+        result,
+        calculateBalance(updatedMember.points)
+      );
+    }
+
+    if (
+      command === "2" ||
+      command === "BATAL"
+    ) {
+      await clearSession(
+        DB,
+        member.whatsapp
+      );
+
+      return [
+        "---------------------------",
+        "   PENARIKAN DIBATALKAN",
+        "---------------------------",
+        "",
+        "Permintaan penarikan tidak jadi",
+        "diajukan.",
+        "",
+        "Saldo Anda tetap aman.",
+        "",
+        "00. Menu Utama",
+        "---------------------------"
+      ].join("\n");
+    }
+
+    return [
+      "Pilihan tidak valid.",
+      "",
+      withdrawalConfirmationPage(
+        member,
+        session.data
+      )
+    ].join("\n");
+  }
+
+  return null;
+}
+
+
 /**
  * ============================================
  * DOWNLOAD APLIKASI
