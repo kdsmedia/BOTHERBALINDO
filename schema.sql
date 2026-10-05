@@ -161,3 +161,59 @@ ON withdrawals(status);
 
 CREATE INDEX IF NOT EXISTS idx_user_sessions_updated
 ON user_sessions(updated_at);
+
+
+-- ============================================================
+-- BAB 9 — TABEL PEMBELIAN PRODUK
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS purchases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    purchase_id TEXT NOT NULL UNIQUE,
+
+    member_id TEXT NOT NULL,
+
+    product_id INTEGER DEFAULT NULL,
+
+    product_name TEXT NOT NULL,
+
+    quantity INTEGER NOT NULL DEFAULT 1,
+
+    total_amount INTEGER NOT NULL DEFAULT 0,
+
+    reward_points INTEGER NOT NULL DEFAULT 50000,
+
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (
+            status IN (
+                'pending',
+                'approved',
+                'rejected'
+            )
+        ),
+
+    reward_given INTEGER NOT NULL DEFAULT 0
+        CHECK (reward_given IN (0, 1)),
+
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    processed_at TEXT DEFAULT NULL,
+
+    processed_by TEXT DEFAULT NULL,
+
+    FOREIGN KEY (member_id)
+        REFERENCES members(member_id),
+
+    FOREIGN KEY (product_id)
+        REFERENCES products(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_purchases_member
+ON purchases(member_id);
+
+CREATE INDEX IF NOT EXISTS idx_purchases_status
+ON purchases(status);
+
+CREATE INDEX IF NOT EXISTS idx_purchases_reward
+ON purchases(reward_given);
