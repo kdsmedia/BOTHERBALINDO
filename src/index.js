@@ -374,6 +374,29 @@ async function processMessage(message, value, env) {
     }
   }
 
+  // ------------------------------------------------------------
+  // PROSES SESSION PEMBELIAN
+  // ------------------------------------------------------------
+
+  if (
+    session.state.startsWith("purchase_") ||
+    command === "BELI" ||
+    command === "BELI PRODUK" ||
+    command === "VERIFIKASI PEMBELIAN"
+  ) {
+    const purchaseResponse =
+      await handlePurchase(
+        env.DB,
+        member,
+        text,
+        env
+      );
+
+    if (purchaseResponse) {
+      return purchaseResponse;
+    }
+  }
+
   switch (command) {
 
     case "PROFIL":
@@ -398,9 +421,10 @@ async function processMessage(message, value, env) {
 
     case "PRODUK":
     case "3":
-      await sendCatalog(
+      await sendText(
         env,
-        whatsapp
+        whatsapp,
+        productPage(env)
       );
       break;
 
@@ -477,6 +501,7 @@ function mainMenu() {
 👤 PROFIL
 💰 SALDO
 🛍️ PRODUK
+🛒 BELI
 📅 LOGIN HARIAN
 👥 UNDANG TEMAN
 📲 DOWNLOAD APLIKASI
@@ -2917,6 +2942,213 @@ async function adminPurchaseList(DB) {
   );
 
   return lines.join("\n");
+}
+
+
+// ============================================================
+// BAB 9 — PROSES PENGAJUAN PEMBELIAN
+// ============================================================
+
+async function handlePurchase(DB, member, text, env) {
+  const command = normalizeCommand(text);
+  const session = await getSession(DB, member.whatsapp);
+
+  // --------------------------------------------------------
+  // MULAI PENGAJUAN
+  // --------------------------------------------------------
+
+  if (
+    command === "BELI" ||
+    command === "BELI PRODUK" ||
+    command === "VERIFIKASI PEMBELIAN"
+  ) {
+    await setSession(
+      DB,
+      member.whatsapp,
+      "purchase_product",
+      {}
+    );
+
+    return purchaseStartPage();
+  }
+
+  // --------------------------------------------------------
+  // INPUT NAMA PRODUK
+  // --------------------------------------------------------
+
+  if (session.state === "purchase_product") {
+    const productName =
+      String(text || "").trim();
+
+    if (
+      productName.length < 2 ||
+      productName.length > 100
+    ) {
+      return [
+        "Nama produk tidak valid.",
+        "",
+        purchaseStartPage()
+      ].join("\n");
+    }
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "purchase_quantity",
+      {
+        productName
+      }
+    );
+
+    return purchaseQuantityPage(productName);
+  }
+
+  // --------------------------------------------------------
+  // INPUT JUMLAH
+  // --------------------------------------------------------
+
+  if (session.state === "purchase_quantity") {
+    const quantity = Number(command);
+
+    if (
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > 1000
+    ) {
+      return [
+        "Jumlah produk tidak valid.",
+        "",
+        purchaseQuantityPage(
+          session.data.productName
+        )
+      ].join("\n");
+    }
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "purchase_amount",
+      {
+        productName: session.data.productName,
+        quantity
+      }
+    );
+
+    return purchaseAmountPage(
+      session.data.productName,
+      quantity
+    );
+  }
+
+  // --------------------------------------------------------
+  // INPUT TOTAL PEMBELIAN
+  // --------------------------------------------------------
+
+  if (session.state === "purchase_amount") {
+    const digits =
+      String(text || "")
+        .replace(/[^\d]/g, "");
+
+    const totalAmount = Number(digits);
+
+    if (
+      !Number.isInteger(totalAmount) ||
+      totalAmount <= 0
+    ) {
+      return [
+        "Total pembelian tidak valid.",
+        "",
+        purchaseAmountPage(
+          session.data.productName,
+          session.data.quantity
+        )
+      ].join("\n");
+    }
+
+    const data = {
+      productName: session.data.productName,
+      quantity: session.data.quantity,
+      totalAmount
+    };
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "purchase_confirm",
+      data
+    );
+
+    return purchaseConfirmationPage(data);
+  }
+
+  // --------------------------------------------------------
+  // KONFIRMASI
+  // --------------------------------------------------------
+
+  if (session.state === "purchase_confirm") {
+    if (command === "1" || command === "YA") {
+      const result =
+        await createPurchase(
+          DB,
+          member,
+          session.data
+        );
+
+      if (!result.success) {
+        await clearSession(
+          DB,
+          member.whatsapp
+        );
+
+        return [
+          "---------------------------",
+          "   ❌ PENGAJUAN GAGAL",
+          "---------------------------",
+          "",
+          safeText(result.message),
+          "",
+          "00. Menu Utama",
+          "---------------------------"
+        ].join("\n");
+      }
+
+      await clearSession(
+        DB,
+        member.whatsapp
+      );
+
+      return purchasePendingPage(result);
+    }
+
+    if (command === "2" || command === "BATAL") {
+      await clearSession(
+        DB,
+        member.whatsapp
+      );
+
+      return [
+        "---------------------------",
+        "   PENGAJUAN DIBATALKAN",
+        "---------------------------",
+        "",
+        "Pengajuan verifikasi pembelian",
+        "tidak jadi dikirim.",
+        "",
+        "00. Menu Utama",
+        "---------------------------"
+      ].join("\n");
+    }
+
+    return [
+      "Pilihan tidak valid.",
+      "",
+      purchaseConfirmationPage(
+        session.data
+      )
+    ].join("\n");
+  }
+
+  return null;
 }
 
 
