@@ -1167,4 +1167,4 @@ function jsonResponse(
       }
     }
   );
-    }
+}
