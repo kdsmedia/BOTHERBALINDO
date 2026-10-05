@@ -3271,6 +3271,74 @@ async function adminToggleProduct(
 
 
 // ============================================================
+// BAB 10 — EDIT PRODUK
+// ============================================================
+
+async function adminEditProduct(
+  DB,
+  productId,
+  price,
+  rewardRupiah
+) {
+  const id = Number(productId);
+  const newPrice = Number(price);
+  const newReward = Number(rewardRupiah);
+
+  if (
+    !Number.isInteger(id) ||
+    !Number.isInteger(newPrice) ||
+    newPrice < 0 ||
+    !Number.isInteger(newReward) ||
+    newReward < 0
+  ) {
+    return {
+      success: false,
+      message: "Data produk tidak valid."
+    };
+  }
+
+  const product =
+    await DB.prepare(`
+      SELECT id, product_name
+      FROM products
+      WHERE id = ?
+      LIMIT 1
+    `).bind(id).first();
+
+  if (!product) {
+    return {
+      success: false,
+      message: "Produk tidak ditemukan."
+    };
+  }
+
+  const rewardPoints =
+    newReward * 100;
+
+  await DB.prepare(`
+    UPDATE products
+    SET
+      price = ?,
+      reward_points = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).bind(
+    newPrice,
+    rewardPoints,
+    id
+  ).run();
+
+  return {
+    success: true,
+    productName: product.product_name,
+    price: newPrice,
+    reward: newReward,
+    rewardPoints
+  };
+}
+
+
+// ============================================================
 // BAB 9 — PROSES PENGAJUAN PEMBELIAN
 // ============================================================
 
