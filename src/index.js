@@ -3181,6 +3181,35 @@ async function createProduct(
 
 
 // ============================================================
+// BAB 10 — PRODUK BERHASIL DIBUAT
+// ============================================================
+
+function adminProductCreatedPage(result) {
+  return [
+    "---------------------------",
+    "     ✅ PRODUK DITAMBAHKAN",
+    "---------------------------",
+    "",
+    `ID PRODUK : ${result.productId}`,
+    `PRODUK     : ${safeText(result.productName)}`,
+    `HARGA      : ${formatRupiah(result.price)}`,
+    `REWARD     : ${formatRupiah(result.reward)}`,
+    `POIN       : ${formatNumber(
+      result.rewardPoints
+    )}`,
+    "",
+    "STATUS     : ACTIVE",
+    "",
+    "Produk berhasil disimpan.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
+// ============================================================
 // BAB 9 — PROSES PENGAJUAN PEMBELIAN
 // ============================================================
 
