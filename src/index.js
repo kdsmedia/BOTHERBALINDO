@@ -1298,6 +1298,34 @@ function purchaseQuantityPage(productName) {
 }
 
 
+// ============================================================
+// BAB 9 — TOTAL PEMBELIAN
+// ============================================================
+
+function purchaseAmountPage(productName, quantity) {
+  return [
+    "---------------------------",
+    "      TOTAL PEMBELIAN",
+    "---------------------------",
+    "",
+    `Produk : ${safeText(productName)}`,
+    `Jumlah : ${quantity}`,
+    "",
+    "Kirim total harga pembelian",
+    "dalam Rupiah.",
+    "",
+    "Contoh:",
+    "50000",
+    "",
+    "Jangan menggunakan titik atau koma.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * LOGIN HARIAN
