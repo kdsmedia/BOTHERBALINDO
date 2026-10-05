@@ -2692,6 +2692,131 @@ function purchasePendingPage(result) {
 }
 
 
+// ============================================================
+// BAB 9 — APPROVE PEMBELIAN
+// ============================================================
+
+async function approvePurchase(
+  DB,
+  purchaseId,
+  adminWhatsapp
+) {
+  const purchase =
+    await DB.prepare(`
+      SELECT
+        purchase_id,
+        member_id,
+        product_name,
+        quantity,
+        total_amount,
+        reward_points,
+        status,
+        reward_given
+      FROM purchases
+      WHERE purchase_id = ?
+      LIMIT 1
+    `).bind(
+      purchaseId
+    ).first();
+
+  if (!purchase) {
+    return "ID pembelian tidak ditemukan.";
+  }
+
+  if (purchase.status !== "pending") {
+    return [
+      "Pembelian sudah diproses.",
+      "",
+      `Status: ${purchase.status.toUpperCase()}`
+    ].join("\n");
+  }
+
+  if (Number(purchase.reward_given) === 1) {
+    return "Reward pembelian sudah pernah diberikan.";
+  }
+
+  const transactionId =
+    generateTransactionId("BUY");
+
+  const results = await DB.batch([
+    DB.prepare(`
+      UPDATE purchases
+      SET
+        status = 'approved',
+        reward_given = 1,
+        processed_at = CURRENT_TIMESTAMP,
+        processed_by = ?
+      WHERE purchase_id = ?
+        AND status = 'pending'
+        AND reward_given = 0
+    `).bind(
+      adminWhatsapp,
+      purchaseId
+    ),
+
+    DB.prepare(`
+      UPDATE members
+      SET
+        points = points + ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE member_id = ?
+    `).bind(
+      purchase.reward_points,
+      purchase.member_id
+    ),
+
+    DB.prepare(`
+      INSERT INTO transactions (
+        transaction_id,
+        member_id,
+        type,
+        points,
+        amount,
+        description
+      )
+      VALUES (
+        ?,
+        ?,
+        'PURCHASE_REWARD',
+        ?,
+        ?,
+        ?
+      )
+    `).bind(
+      transactionId,
+      purchase.member_id,
+      purchase.reward_points,
+      purchase.reward_points / 100,
+      `Reward pembelian ${purchase.purchase_id}`
+    )
+  ]);
+
+  if (
+    !results[0] ||
+    results[0].meta.changes !== 1
+  ) {
+    return "Pembelian gagal diproses atau sudah diproses.";
+  }
+
+  return [
+    "---------------------------",
+    "   ✅ PEMBELIAN DISETUJUI",
+    "---------------------------",
+    "",
+    `ID       : ${safeText(purchase.purchase_id)}`,
+    `Member   : ${safeText(purchase.member_id)}`,
+    `Produk   : ${safeText(purchase.product_name)}`,
+    `Jumlah   : ${purchase.quantity}`,
+    `Reward   : ${formatRupiah(
+      purchase.reward_points / 100
+    )}`,
+    "",
+    "Reward berhasil ditambahkan.",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
