@@ -13,6 +13,7 @@
  * - SALDO + POIN
  * - PRODUK -> Katalog WhatsApp
  * - DOWNLOAD APLIKASI
+ * - LOGIN HARIAN
  * - Navigasi 0 dan 00
  *
  * ADMIN:
@@ -319,6 +320,16 @@ async function processMessage(message, value, env) {
       );
       break;
 
+    case "LOGIN HARIAN":
+    case "LOGIN":
+    case "5":
+      await sendText(
+        env,
+        whatsapp,
+        await dailyLoginPage(member, env)
+      );
+      break;
+
     case "MENU":
     case "MENU UTAMA":
     case "START":
@@ -358,6 +369,7 @@ function mainMenu() {
 💰 SALDO
 🛍️ PRODUK
 📲 DOWNLOAD APLIKASI
+📅 LOGIN HARIAN
 
 ---------------------------
 Ketik nama menu yang ingin
@@ -469,6 +481,263 @@ ${env.APP_DOWNLOAD_URL}
 00 = Menu Utama
 ---------------------------
 `.trim();
+}
+
+
+/**
+ * ============================================
+ * LOGIN HARIAN
+ * ============================================
+ *
+ * Reward:
+ * Rp100 = 10.000 poin
+ *
+ * Member hanya mendapatkan reward
+ * satu kali dalam satu hari.
+ * ============================================
+ */
+async function processDailyLogin(member, env) {
+  const today = getIndonesiaDate();
+
+  /*
+   * Jika member sudah login hari ini,
+   * jangan berikan reward lagi.
+   */
+  if (member.daily_login_date === today) {
+    return {
+      success: false,
+      alreadyClaimed: true,
+      rewardAmount: 0,
+      rewardPoints: 0,
+      member
+    };
+  }
+
+  const rewardAmount = 100;
+
+  /*
+   * Rp100
+   * 1.000 poin = Rp10
+   *
+   * Rp100 = 10.000 poin
+   */
+  const rewardPoints = rewardAmount * 100;
+
+  /*
+   * Tambahkan poin dan tandai login hari ini.
+   */
+  await env.DB
+    .prepare(`
+      UPDATE members
+      SET
+        points = points + ?,
+        daily_login_date = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE member_id = ?
+    `)
+    .bind(
+      rewardPoints,
+      today,
+      member.member_id
+    )
+    .run();
+
+  /*
+   * Catat transaksi reward.
+   */
+  const transactionId =
+    generateTransactionId("LOGIN");
+
+  await env.DB
+    .prepare(`
+      INSERT INTO transactions (
+        transaction_id,
+        member_id,
+        type,
+        points,
+        amount,
+        description
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      transactionId,
+      member.member_id,
+      "daily_login",
+      rewardPoints,
+      rewardAmount,
+      "Reward login harian"
+    )
+    .run();
+
+  /*
+   * Ambil data member terbaru.
+   */
+  const updatedMember =
+    await getMemberByMemberId(
+      env.DB,
+      member.member_id
+    );
+
+  return {
+    success: true,
+    alreadyClaimed: false,
+    rewardAmount,
+    rewardPoints,
+    member: updatedMember
+  };
+}
+
+
+/**
+ * ============================================
+ * HALAMAN LOGIN HARIAN
+ * ============================================
+ */
+async function dailyLoginPage(
+  member,
+  env
+) {
+  const result =
+    await processDailyLogin(
+      member,
+      env
+    );
+
+  if (result.alreadyClaimed) {
+    return `
+---------------------------
+       📅 LOGIN HARIAN
+---------------------------
+
+⚠️ Anda sudah melakukan
+login harian hari ini.
+
+🎁 Reward hari ini sudah
+diberikan sebelumnya.
+
+⭐ Poin:
+${formatNumber(member.points)}
+
+💵 Saldo:
+${formatRupiah(
+  calculateBalance(member.points)
+)}
+
+---------------------------
+Coba lagi besok.
+
+0  = Kembali
+00 = Menu Utama
+---------------------------
+`.trim();
+  }
+
+  return `
+---------------------------
+       📅 LOGIN HARIAN
+---------------------------
+
+✅ LOGIN BERHASIL!
+
+🎁 Reward:
+Rp${formatNumber(
+  result.rewardAmount
+)}
+
+⭐ +${formatNumber(
+  result.rewardPoints
+)} poin
+
+━━━━━━━━━━━━━━━━━━
+
+⭐ Total poin:
+${formatNumber(
+  result.member.points
+)}
+
+💵 Saldo:
+${formatRupiah(
+  calculateBalance(
+    result.member.points
+  )
+)}
+
+---------------------------
+Reward login berikutnya
+tersedia besok.
+
+0  = Kembali
+00 = Menu Utama
+---------------------------
+`.trim();
+}
+
+
+/**
+ * ============================================
+ * AMBIL MEMBER BERDASARKAN MEMBER ID
+ * ============================================
+ */
+async function getMemberByMemberId(
+  DB,
+  memberId
+) {
+  return await DB
+    .prepare(`
+      SELECT *
+      FROM members
+      WHERE member_id = ?
+      LIMIT 1
+    `)
+    .bind(memberId)
+    .first();
+}
+
+
+/**
+ * ============================================
+ * TANGGAL INDONESIA
+ * ============================================
+ *
+ * Menggunakan zona waktu Asia/Jakarta.
+ *
+ * Format:
+ * YYYY-MM-DD
+ * ============================================
+ */
+function getIndonesiaDate() {
+  return new Intl.DateTimeFormat(
+    "en-CA",
+    {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }
+  ).format(new Date());
+}
+
+
+/**
+ * ============================================
+ * GENERATE ID TRANSAKSI
+ * ============================================
+ */
+function generateTransactionId(
+  prefix = "TRX"
+) {
+  const timestamp =
+    Date.now().toString(36)
+      .toUpperCase();
+
+  const random =
+    Math.random()
+      .toString(36)
+      .substring(2, 7)
+      .toUpperCase();
+
+  return `${prefix}-${timestamp}-${random}`;
 }
 
 
