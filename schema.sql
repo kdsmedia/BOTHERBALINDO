@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS members (
     status TEXT NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'blocked')),
     referred_by TEXT DEFAULT NULL,
+    referral_rewarded INTEGER NOT NULL DEFAULT 0,
     daily_login_date TEXT DEFAULT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -134,6 +135,9 @@ ON members(whatsapp);
 
 CREATE INDEX IF NOT EXISTS idx_members_member_id
 ON members(member_id);
+
+CREATE INDEX IF NOT EXISTS idx_members_referred_by
+ON members(referred_by);
 
 CREATE INDEX IF NOT EXISTS idx_transactions_member
 ON transactions(member_id);
