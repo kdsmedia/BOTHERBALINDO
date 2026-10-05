@@ -372,6 +372,7 @@ function mainMenu() {
 💰 SALDO
 🛍️ PRODUK
 📅 LOGIN HARIAN
+👥 UNDANG TEMAN
 📲 DOWNLOAD APLIKASI
 
 ---------------------------
