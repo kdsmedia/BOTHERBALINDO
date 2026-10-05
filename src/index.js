@@ -1171,3 +1171,227 @@ function jsonResponse(
     }
   );
 }
+
+
+/**
+ * ============================================
+ * REFERRAL
+ * ============================================
+ *
+ * Reward pengundang:
+ * Rp1.000 = 100.000 poin
+ *
+ * Reward hanya diberikan satu kali untuk
+ * setiap member baru yang berhasil terdaftar.
+ * ============================================
+ */
+async function processReferralReward(
+  DB,
+  newMember
+) {
+  if (!newMember.referred_by) {
+    return;
+  }
+
+  /*
+   * Jangan memberikan reward dua kali.
+   */
+  if (Number(newMember.referral_rewarded) === 1) {
+    return;
+  }
+
+  /*
+   * Cari member yang mengundang.
+   */
+  const inviter = await DB
+    .prepare(`
+      SELECT *
+      FROM members
+      WHERE member_id = ?
+      LIMIT 1
+    `)
+    .bind(newMember.referred_by)
+    .first();
+
+  /*
+   * Jika ID referral tidak ditemukan,
+   * tidak ada reward.
+   */
+  if (!inviter) {
+    return;
+  }
+
+  /*
+   * Jangan memberi reward kepada akun yang
+   * mengundang dirinya sendiri.
+   */
+  if (
+    inviter.member_id === newMember.member_id
+  ) {
+    return;
+  }
+
+  const rewardAmount = 1000;
+  const rewardPoints = 100000;
+
+  /*
+   * Tambahkan poin kepada pengundang.
+   */
+  await DB
+    .prepare(`
+      UPDATE members
+      SET
+        points = points + ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE member_id = ?
+    `)
+    .bind(
+      rewardPoints,
+      inviter.member_id
+    )
+    .run();
+
+  /*
+   * Tandai bahwa member baru sudah
+   * menghasilkan reward referral.
+   */
+  await DB
+    .prepare(`
+      UPDATE members
+      SET
+        referral_rewarded = 1,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE member_id = ?
+    `)
+    .bind(
+      newMember.member_id
+    )
+    .run();
+
+  /*
+   * Catat transaksi referral.
+   */
+  const transactionId =
+    generateTransactionId("REF");
+
+  await DB
+    .prepare(`
+      INSERT INTO transactions (
+        transaction_id,
+        member_id,
+        type,
+        points,
+        amount,
+        description
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      transactionId,
+      inviter.member_id,
+      "referral",
+      rewardPoints,
+      rewardAmount,
+      `Reward mengundang member ${newMember.member_id}`
+    )
+    .run();
+}
+
+
+/**
+ * ============================================
+ * HALAMAN UNDANG TEMAN
+ * ============================================
+ */
+function referralPage(
+  member,
+  env
+) {
+  const referralId =
+    member.member_id;
+
+  const botNumber =
+    normalizePhone(
+      env.WHATSAPP_BOT_NUMBER || ""
+    );
+
+  const referralText =
+    encodeURIComponent(
+      `DAFTAR ${referralId}`
+    );
+
+  let referralLink = "";
+
+  if (botNumber) {
+    referralLink =
+      `https://wa.me/${botNumber}?text=${referralText}`;
+  } else {
+    referralLink =
+      `Kirim pesan "DAFTAR ${referralId}" ke nomor bot HERBALINDO.`;
+  }
+
+  return `
+---------------------------
+       👥 UNDANG TEMAN
+---------------------------
+
+🎁 Reward undang teman:
+
+💵 Rp1.000
+⭐ 100.000 poin
+
+━━━━━━━━━━━━━━━━━━
+
+🆔 ID Referral Anda:
+
+${referralId}
+
+━━━━━━━━━━━━━━━━━━
+
+🔗 LINK UNDANGAN:
+
+${referralLink}
+
+━━━━━━━━━━━━━━━━━━
+
+Teman Anda harus mendaftar
+melalui link/kode referral
+tersebut.
+
+---------------------------
+0  = Kembali
+00 = Menu Utama
+---------------------------
+`.trim();
+}
+
+
+/**
+ * ============================================
+ * PARSE KODE REFERRAL
+ * ============================================
+ *
+ * Contoh:
+ *
+ * DAFTAR 123456
+ * REF 123456
+ * REFERRAL 123456
+ * ============================================
+ */
+function parseReferralCode(text) {
+  const value =
+    String(text || "")
+      .trim()
+      .toUpperCase();
+
+  const match =
+    value.match(
+      /^(?:DAFTAR|REF|REFERRAL)\s+(\d{6})$/
+    );
+
+  if (!match) {
+    return null;
+  }
+
+  return match[1];
+}
