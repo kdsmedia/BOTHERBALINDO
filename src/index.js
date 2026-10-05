@@ -3046,6 +3046,32 @@ function adminAddProductPage() {
 
 
 // ============================================================
+// BAB 10 — HARGA PRODUK
+// ============================================================
+
+function adminProductPricePage(productName) {
+  return [
+    "---------------------------",
+    "        HARGA PRODUK",
+    "---------------------------",
+    "",
+    `Produk: ${safeText(productName)}`,
+    "",
+    "Kirim harga produk dalam Rupiah.",
+    "",
+    "Contoh:",
+    "25000",
+    "",
+    "Jangan menggunakan titik atau koma.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
+// ============================================================
 // BAB 9 — PROSES PENGAJUAN PEMBELIAN
 // ============================================================
 
