@@ -18,3 +18,4 @@ database_id = "GANTI_DENGAN_DATABASE_ID_ANDA"
 [vars]
 ADMIN_WHATSAPP = "6285813899649"
 APP_DOWNLOAD_URL = "https://play.google.com/store/apps/details?id=com.altomedia.herbalindo"
+WHATSAPP_CATALOG_URL = "GANTI_DENGAN_LINK_KATALOG_WHATSAPP"
