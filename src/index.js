@@ -585,6 +585,33 @@ function withdrawalAmountPage() {
 }
 
 
+// ============================================================
+// BAB 7 — METODE PENARIKAN
+// ============================================================
+
+function withdrawalMethodPage(amount) {
+  return [
+    "---------------------------",
+    "    METODE PENARIKAN",
+    "---------------------------",
+    "",
+    `Nominal : ${formatRupiah(amount)}`,
+    "",
+    "PILIH METODE:",
+    "",
+    "1. DANA",
+    "2. OVO",
+    "3. GOPAY",
+    "",
+    "Ketik nomor pilihan.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * DOWNLOAD APLIKASI
