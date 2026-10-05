@@ -3021,6 +3021,31 @@ async function adminProductList(DB) {
 
 
 // ============================================================
+// BAB 10 — MULAI TAMBAH PRODUK
+// ============================================================
+
+function adminAddProductPage() {
+  return [
+    "---------------------------",
+    "       TAMBAH PRODUK",
+    "---------------------------",
+    "",
+    "Kirim nama produk baru.",
+    "",
+    "Contoh:",
+    "HERBAL DIET ALAMI",
+    "",
+    "Nama harus jelas dan mudah",
+    "dikenali member.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
+// ============================================================
 // BAB 9 — PROSES PENGAJUAN PEMBELIAN
 // ============================================================
 
