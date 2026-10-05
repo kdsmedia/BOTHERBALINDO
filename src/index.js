@@ -666,6 +666,41 @@ function withdrawalAccountNamePage(method, amount, accountNumber) {
 }
 
 
+// ============================================================
+// BAB 7 — KONFIRMASI PENARIKAN
+// ============================================================
+
+function withdrawalConfirmationPage(member, data) {
+  const balanceBefore = calculateBalance(member.points);
+
+  return [
+    "---------------------------",
+    "   KONFIRMASI PENARIKAN",
+    "---------------------------",
+    "",
+    `ID TRANSAKSI : ${safeText(data.withdrawalId)}`,
+    `ID MEMBER    : ${safeText(member.member_id)}`,
+    `WHATSAPP     : ${safeText(formatPhone(member.whatsapp))}`,
+    "",
+    `NOMINAL      : ${formatRupiah(data.amount)}`,
+    `METODE       : ${safeText(data.method)}`,
+    `NOMOR AKUN   : ${safeText(data.accountNumber)}`,
+    `NAMA PEMILIK : ${safeText(data.accountName)}`,
+    "",
+    `SALDO SEBELUM: ${formatRupiah(balanceBefore)}`,
+    "",
+    "Apakah data sudah benar?",
+    "",
+    "1. YA, AJUKAN PENARIKAN",
+    "2. BATAL",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * DOWNLOAD APLIKASI
