@@ -2663,6 +2663,35 @@ async function createPurchase(
 }
 
 
+// ============================================================
+// BAB 9 — VERIFIKASI BERHASIL
+// ============================================================
+
+function purchasePendingPage(result) {
+  return [
+    "---------------------------",
+    "   ✅ PEMBELIAN TERKIRIM",
+    "---------------------------",
+    "",
+    "Data pembelian berhasil",
+    "dikirim untuk verifikasi admin.",
+    "",
+    `ID PEMBELIAN : ${safeText(
+      result.purchaseId
+    )}`,
+    "",
+    "STATUS : PENDING",
+    "",
+    "Reward akan diberikan setelah",
+    "pembelian disetujui admin.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
