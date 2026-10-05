@@ -3104,6 +3104,83 @@ function adminProductRewardPage(
 
 
 // ============================================================
+// BAB 10 — SIMPAN PRODUK
+// ============================================================
+
+async function createProduct(
+  DB,
+  productName,
+  price,
+  rewardRupiah
+) {
+  const name =
+    String(productName || "").trim();
+
+  const productPrice =
+    Number(price);
+
+  const reward =
+    Number(rewardRupiah);
+
+  if (
+    name.length < 2 ||
+    name.length > 150
+  ) {
+    return {
+      success: false,
+      message: "Nama produk tidak valid."
+    };
+  }
+
+  if (
+    !Number.isInteger(productPrice) ||
+    productPrice < 0
+  ) {
+    return {
+      success: false,
+      message: "Harga produk tidak valid."
+    };
+  }
+
+  if (
+    !Number.isInteger(reward) ||
+    reward < 0
+  ) {
+    return {
+      success: false,
+      message: "Reward tidak valid."
+    };
+  }
+
+  const rewardPoints =
+    reward * 100;
+
+  const result = await DB.prepare(`
+    INSERT INTO products (
+      product_name,
+      price,
+      reward_points,
+      status
+    )
+    VALUES (?, ?, ?, 'active')
+  `).bind(
+    name,
+    productPrice,
+    rewardPoints
+  ).run();
+
+  return {
+    success: true,
+    productId: result.meta.last_row_id,
+    productName: name,
+    price: productPrice,
+    reward: reward,
+    rewardPoints: rewardPoints
+  };
+}
+
+
+// ============================================================
 // BAB 9 — PROSES PENGAJUAN PEMBELIAN
 // ============================================================
 
