@@ -718,6 +718,114 @@ function generateWithdrawalId() {
 }
 
 
+// ============================================================
+// BAB 7 — PROSES PENARIKAN
+// ============================================================
+
+async function createWithdrawal(DB, member, data) {
+  const amount = Number(data.amount);
+
+  if (!WITHDRAWAL_AMOUNTS.includes(amount)) {
+    return {
+      success: false,
+      message: "Nominal penarikan tidak tersedia."
+    };
+  }
+
+  const requiredPoints = amount * 100;
+
+  // Pastikan saldo mencukupi.
+  if (Number(member.points) < requiredPoints) {
+    return {
+      success: false,
+      message:
+        `Saldo tidak mencukupi.\n\n` +
+        `Saldo Anda: ${formatRupiah(calculateBalance(member.points))}\n` +
+        `Penarikan: ${formatRupiah(amount)}`
+    };
+  }
+
+  const withdrawalId = data.withdrawalId || generateWithdrawalId();
+
+  const transactionId =
+    generateTransactionId("WD");
+
+  /*
+   * Pengurangan saldo dan pencatatan transaksi
+   * dilakukan dalam batch D1.
+   */
+  const results = await DB.batch([
+    DB.prepare(`
+      UPDATE members
+      SET
+        points = points - ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE member_id = ?
+        AND points >= ?
+    `).bind(
+      requiredPoints,
+      member.member_id,
+      requiredPoints
+    ),
+
+    DB.prepare(`
+      INSERT INTO withdrawals (
+        withdrawal_id,
+        member_id,
+        amount,
+        method,
+        account_number,
+        account_name,
+        status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    `).bind(
+      withdrawalId,
+      member.member_id,
+      amount,
+      data.method,
+      data.accountNumber,
+      data.accountName
+    ),
+
+    DB.prepare(`
+      INSERT INTO transactions (
+        transaction_id,
+        member_id,
+        type,
+        points,
+        amount,
+        description
+      )
+      VALUES (?, ?, 'WITHDRAWAL', ?, ?, ?)
+    `).bind(
+      transactionId,
+      member.member_id,
+      -requiredPoints,
+      -amount,
+      `Penarikan ${formatRupiah(amount)} via ${data.method}`
+    )
+  ]);
+
+  const updateResult = results[0];
+
+  if (!updateResult || updateResult.meta.changes !== 1) {
+    return {
+      success: false,
+      message: "Saldo berubah atau tidak mencukupi. Silakan coba lagi."
+    };
+  }
+
+  return {
+    success: true,
+    withdrawalId,
+    transactionId,
+    amount,
+    requiredPoints
+  };
+}
+
+
 /**
  * ============================================
  * DOWNLOAD APLIKASI
