@@ -1995,6 +1995,43 @@ async function handleAdminCommand(
     return adminPurchaseList(DB);
   }
 
+  // ------------------------------------------------------------
+  // BAB 10 — PERINTAH ADMIN PRODUK
+  // ------------------------------------------------------------
+
+  // Daftar produk
+  if (command === "8") {
+    return adminProductList(DB);
+  }
+
+  // Tambah produk
+  if (
+    command === "TAMBAH PRODUK" ||
+    command === "ADD PRODUK"
+  ) {
+    await setSession(
+      DB,
+      member.whatsapp,
+      "admin_product_name",
+      {}
+    );
+
+    return adminAddProductPage();
+  }
+
+  // Aktif / nonaktif produk
+  if (
+    command.startsWith("TOGGLE PRODUK ")
+  ) {
+    const productId =
+      text.substring(14).trim();
+
+    return adminToggleProduct(
+      DB,
+      productId
+    );
+  }
+
   // Approve pembelian
   if (command.startsWith("APPROVE BUY-")) {
     const purchaseId =
@@ -2065,11 +2102,16 @@ function adminMenu() {
     "5. PERMINTAAN WITHDRAW",
     "6. KELUAR ADMIN",
     "7. PEMBELIAN PENDING",
+    "8. DAFTAR PRODUK",
     "",
     "Ketik nomor menu.",
     "",
     "Contoh proses pembelian:",
     "APPROVE BUY-XXXXXXXX-1234",
+    "",
+    "Perintah produk:",
+    "TAMBAH PRODUK",
+    "TOGGLE PRODUK <ID>",
     "",
     "0. Kembali",
     "00. Menu Utama",
