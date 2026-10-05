@@ -612,6 +612,34 @@ function withdrawalMethodPage(amount) {
 }
 
 
+// ============================================================
+// BAB 7 — INPUT NOMOR AKUN
+// ============================================================
+
+function withdrawalAccountPage(method, amount) {
+  return [
+    "---------------------------",
+    "    NOMOR AKUN TUJUAN",
+    "---------------------------",
+    "",
+    `Metode  : ${method}`,
+    `Nominal : ${formatRupiah(amount)}`,
+    "",
+    "Silakan kirim nomor akun",
+    "DANA / OVO / GOPAY tujuan.",
+    "",
+    "Contoh:",
+    "081234567890",
+    "",
+    "Pastikan nomor sudah benar.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * DOWNLOAD APLIKASI
