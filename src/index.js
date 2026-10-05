@@ -3072,6 +3072,38 @@ function adminProductPricePage(productName) {
 
 
 // ============================================================
+// BAB 10 — REWARD PRODUK
+// ============================================================
+
+function adminProductRewardPage(
+  productName,
+  price
+) {
+  return [
+    "---------------------------",
+    "       REWARD PRODUK",
+    "---------------------------",
+    "",
+    `Produk : ${safeText(productName)}`,
+    `Harga  : ${formatRupiah(price)}`,
+    "",
+    "Kirim nominal reward dalam",
+    "Rupiah.",
+    "",
+    "Default:",
+    "500",
+    "",
+    "Contoh:",
+    "500",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
+// ============================================================
 // BAB 9 — PROSES PENGAJUAN PEMBELIAN
 // ============================================================
 
