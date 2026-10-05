@@ -202,101 +202,161 @@ async function processMessage(message, value, env) {
   const referralId =
     parseReferralCommand(text);
 
-  // ------------------------------------------------------------
-  // PROSES SESSION PENDAFTARAN (INPUT NAMA)
-  // ------------------------------------------------------------
+  // ============================================
+  // BAB 12
+  // HANDLER NAMA PENDAFTARAN
+  // ============================================
 
-  if (
-    !member &&
-    (await getSession(
+  const currentSession =
+    await getSession(
       env.DB,
       whatsapp
-    )).state === "register_name"
+    );
+
+  // --------------------------------------------
+  // PROSES NAMA MEMBER BARU
+  // --------------------------------------------
+
+  if (
+    currentSession &&
+    currentSession.state === "register_name"
   ) {
-    const newName =
+    const sessionData =
+      currentSession.data || {};
+
+    const name =
       String(text || "").trim();
 
-    if (
-      newName.length < 2 ||
-      newName.length > 100
-    ) {
-      return [
-        "---------------------------",
-        "     🌿 PENDAFTARAN",
-        "---------------------------",
-        "",
-        "Nama tidak valid.",
-        "",
-        "Silakan kirim nama lengkap",
-        "Anda lagi.",
-        "",
-        "Contoh:",
-        "",
-        "Budi Santoso",
-        "",
-        "---------------------------",
-        "",
-        "0. Kembali",
-        "00. Menu Utama",
-        "---------------------------"
-      ].join("\n");
+    // ----------------------------------------
+    // VALIDASI NAMA
+    // ----------------------------------------
+
+    if (!name) {
+      return `
+---------------------------
+       ⚠️ NAMA
+---------------------------
+
+Nama tidak boleh kosong.
+
+Silakan masukkan nama lengkap
+Anda.
+
+---------------------------
+`;
     }
 
-    const session =
-      await getSession(
-        env.DB,
-        whatsapp
-      );
+    if (name.length < 2) {
+      return `
+---------------------------
+       ⚠️ NAMA
+---------------------------
 
-    const registration =
+Nama terlalu pendek.
+
+Silakan masukkan nama yang
+benar.
+
+---------------------------
+`;
+    }
+
+    if (name.length > 100) {
+      return `
+---------------------------
+       ⚠️ NAMA
+---------------------------
+
+Nama terlalu panjang.
+
+Maksimal 100 karakter.
+
+---------------------------
+`;
+    }
+
+    // ----------------------------------------
+    // CEK REFERRAL
+    // ----------------------------------------
+
+    const referralId =
+      sessionData.referral_id || null;
+
+    // ----------------------------------------
+    // DAFTARKAN MEMBER
+    // ----------------------------------------
+
+    const result =
       await registerMember(
         env.DB,
         whatsapp,
-        newName,
-        session.data.referral_id || null
+        name,
+        referralId
       );
+
+    // ----------------------------------------
+    // BERSIHKAN SESSION
+    // ----------------------------------------
 
     await clearSession(
       env.DB,
       whatsapp
     );
 
-    if (!registration.success) {
+    // ----------------------------------------
+    // HASIL
+    // ----------------------------------------
+
+    if (!result.success) {
       if (
-        registration.reason ===
+        result.reason ===
         "already_registered"
       ) {
         return alreadyRegisteredPage(
-          registration.member
+          result.member
         );
       }
 
       if (
-        registration.reason ===
+        result.reason ===
         "invalid_referral"
       ) {
         return invalidReferralPage();
       }
 
       if (
-        registration.reason ===
+        result.reason ===
         "self_referral"
       ) {
         return selfReferralPage();
       }
 
       if (
-        registration.reason ===
+        result.reason ===
         "inviter_blocked"
       ) {
         return blockedInviterPage();
       }
 
-      return invalidReferralPage();
+      return `
+---------------------------
+       ❌ PENDAFTARAN
+---------------------------
+
+Pendaftaran gagal.
+
+Silakan coba kembali.
+
+---------------------------
+`;
     }
 
+    // ----------------------------------------
+    // PENDAFTARAN BERHASIL
+    // ----------------------------------------
+
     return registrationSuccessPage(
-      registration
+      result
     );
   }
 
