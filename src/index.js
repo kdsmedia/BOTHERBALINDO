@@ -1888,6 +1888,84 @@ async function adminMemberList(DB) {
 }
 
 
+// ============================================================
+// BAB 8 — CARI MEMBER
+// ============================================================
+
+async function adminSearchMember(DB, keyword) {
+  const value = String(keyword || "").trim();
+
+  if (!value) {
+    return [
+      "---------------------------",
+      "        CARI MEMBER",
+      "---------------------------",
+      "",
+      "Kirim ID MEMBER atau nomor",
+      "WhatsApp yang ingin dicari.",
+      "",
+      "Contoh:",
+      "123456",
+      "6285812345678",
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  const phone = normalizePhone(value);
+
+  const member = await DB.prepare(`
+    SELECT
+      member_id,
+      name,
+      whatsapp,
+      points,
+      status,
+      referred_by,
+      created_at
+    FROM members
+    WHERE member_id = ?
+       OR whatsapp = ?
+    LIMIT 1
+  `).bind(value, phone).first();
+
+  if (!member) {
+    return [
+      "---------------------------",
+      "     MEMBER TIDAK DITEMUKAN",
+      "---------------------------",
+      "",
+      `Pencarian: ${safeText(value)}`,
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  return [
+    "---------------------------",
+    "       DETAIL MEMBER",
+    "---------------------------",
+    "",
+    `ID MEMBER : ${safeText(member.member_id)}`,
+    `NAMA      : ${safeText(member.name)}`,
+    `WHATSAPP  : ${safeText(formatPhone(member.whatsapp))}`,
+    `POIN      : ${formatNumber(member.points)}`,
+    `SALDO     : ${formatRupiah(calculateBalance(member.points))}`,
+    `STATUS    : ${safeText(member.status)}`,
+    `REFERRAL  : ${safeText(member.referred_by || "-")}`,
+    `DAFTAR    : ${safeText(member.created_at)}`,
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
