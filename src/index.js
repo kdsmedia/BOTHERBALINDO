@@ -2429,6 +2429,23 @@ async function processAdminWithdrawal(
 }
 
 
+// ============================================================
+// BAB 9 — ID PEMBELIAN
+// ============================================================
+
+function generatePurchaseId() {
+  const now = new Date();
+
+  const timestamp =
+    now.getTime().toString(36).toUpperCase();
+
+  const random =
+    Math.floor(1000 + Math.random() * 9000);
+
+  return `BUY-${timestamp}-${random}`;
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
