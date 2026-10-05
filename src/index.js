@@ -1826,6 +1826,68 @@ function adminMenu() {
 }
 
 
+// ============================================================
+// BAB 8 — DAFTAR MEMBER
+// ============================================================
+
+async function adminMemberList(DB) {
+  const result = await DB.prepare(`
+    SELECT
+      member_id,
+      name,
+      whatsapp,
+      points,
+      status,
+      created_at
+    FROM members
+    ORDER BY id DESC
+    LIMIT 20
+  `).all();
+
+  if (!result.results || result.results.length === 0) {
+    return [
+      "---------------------------",
+      "       DAFTAR MEMBER",
+      "---------------------------",
+      "",
+      "Belum ada member.",
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  const lines = [
+    "---------------------------",
+    "       DAFTAR MEMBER",
+    "---------------------------",
+    ""
+  ];
+
+  for (const member of result.results) {
+    lines.push(
+      `ID: ${safeText(member.member_id)}`,
+      `Nama: ${safeText(member.name)}`,
+      `WA: ${safeText(formatPhone(member.whatsapp))}`,
+      `Saldo: ${formatRupiah(calculateBalance(member.points))}`,
+      `Status: ${safeText(member.status)}`,
+      "---------------------------"
+    );
+  }
+
+  lines.push(
+    "",
+    "Menampilkan maksimal 20 member.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama"
+  );
+
+  return lines.join("\n");
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
