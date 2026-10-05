@@ -3210,6 +3210,67 @@ function adminProductCreatedPage(result) {
 
 
 // ============================================================
+// BAB 10 — AKTIF / NONAKTIF PRODUK
+// ============================================================
+
+async function adminToggleProduct(
+  DB,
+  productId
+) {
+  const id = Number(productId);
+
+  if (!Number.isInteger(id)) {
+    return "ID produk tidak valid.";
+  }
+
+  const product =
+    await DB.prepare(`
+      SELECT
+        id,
+        product_name,
+        status
+      FROM products
+      WHERE id = ?
+      LIMIT 1
+    `).bind(id).first();
+
+  if (!product) {
+    return "Produk tidak ditemukan.";
+  }
+
+  const newStatus =
+    product.status === "active"
+      ? "inactive"
+      : "active";
+
+  await DB.prepare(`
+    UPDATE products
+    SET
+      status = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).bind(
+    newStatus,
+    id
+  ).run();
+
+  return [
+    "---------------------------",
+    "      STATUS PRODUK",
+    "---------------------------",
+    "",
+    `ID     : ${product.id}`,
+    `Produk : ${safeText(product.product_name)}`,
+    "",
+    `STATUS : ${newStatus.toUpperCase()}`,
+    "",
+    "Perubahan berhasil disimpan.",
+    "---------------------------"
+  ].join("\n");
+}
+
+
+// ============================================================
 // BAB 9 — PROSES PENGAJUAN PEMBELIAN
 // ============================================================
 
