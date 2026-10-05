@@ -2037,6 +2037,9 @@ function adminMenu() {
     "",
     "Ketik nomor menu.",
     "",
+    "Contoh proses pembelian:",
+    "APPROVE BUY-XXXXXXXX-1234",
+    "",
     "0. Kembali",
     "00. Menu Utama",
     "---------------------------"
