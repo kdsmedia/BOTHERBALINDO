@@ -826,6 +826,34 @@ async function createWithdrawal(DB, member, data) {
 }
 
 
+// ============================================================
+// BAB 7 — PENARIKAN BERHASIL
+// ============================================================
+
+function withdrawalSuccessPage(result, newBalance) {
+  return [
+    "---------------------------",
+    "    ✅ PENARIKAN DIAJUKAN",
+    "---------------------------",
+    "",
+    "Permintaan penarikan berhasil",
+    "dibuat dan menunggu proses admin.",
+    "",
+    `ID TRANSAKSI : ${safeText(result.withdrawalId)}`,
+    `NOMINAL      : ${formatRupiah(result.amount)}`,
+    "STATUS       : PENDING",
+    "",
+    `SALDO SEKARANG: ${formatRupiah(newBalance)}`,
+    "",
+    "Mohon tunggu proses pencairan.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * DOWNLOAD APLIKASI
