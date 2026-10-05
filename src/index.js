@@ -1399,93 +1399,95 @@ function purchaseConfirmationPage(data) {
  * satu kali dalam satu hari.
  * ============================================
  */
-async function processDailyLogin(member, env) {
-  const today = getIndonesiaDate();
+async function processDailyLogin(
+  DB,
+  member
+) {
+  const today =
+    getIndonesiaDate();
 
-  /*
-   * Jika member sudah login hari ini,
-   * jangan berikan reward lagi.
-   */
-  if (member.daily_login_date === today) {
-    return {
-      success: false,
-      alreadyClaimed: true,
-      rewardAmount: 0,
-      rewardPoints: 0,
-      member
-    };
-  }
+  const rewardRupiah = 100;
 
-  const rewardAmount = 100;
+  const rewardPoints =
+    rewardRupiah * 100;
 
-  /*
-   * Rp100
-   * 1.000 poin = Rp10
-   *
-   * Rp100 = 10.000 poin
-   */
-  const rewardPoints = rewardAmount * 100;
+  const transactionId =
+    generateTransactionId("LOGIN");
 
-  /*
-   * Tambahkan poin dan tandai login hari ini.
-   */
-  await env.DB
-    .prepare(`
+  // --------------------------------------------------------
+  // UPDATE HANYA JIKA HARI INI BELUM CLAIM
+  // --------------------------------------------------------
+
+  const update =
+    await DB.prepare(`
       UPDATE members
       SET
         points = points + ?,
         daily_login_date = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE member_id = ?
-    `)
-    .bind(
+        AND (
+              daily_login_date IS NULL
+              OR daily_login_date != ?
+            )
+    `).bind(
       rewardPoints,
       today,
-      member.member_id
-    )
-    .run();
-
-  /*
-   * Catat transaksi reward.
-   */
-  const transactionId =
-    generateTransactionId("LOGIN");
-
-  await env.DB
-    .prepare(`
-      INSERT INTO transactions (
-        transaction_id,
-        member_id,
-        type,
-        points,
-        amount,
-        description
-      )
-      VALUES (?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      transactionId,
       member.member_id,
-      "daily_login",
-      rewardPoints,
-      rewardAmount,
-      "Reward login harian"
-    )
-    .run();
+      today
+    ).run();
 
-  /*
-   * Ambil data member terbaru.
-   */
+  // Tidak ada perubahan berarti reward
+  // sudah pernah diklaim hari ini.
+  if (
+    !update.meta ||
+    update.meta.changes !== 1
+  ) {
+    return {
+      success: false,
+      alreadyClaimed: true,
+      message:
+        "Anda sudah mengambil reward login hari ini."
+    };
+  }
+
+  // --------------------------------------------------------
+  // CATAT TRANSAKSI
+  // --------------------------------------------------------
+
+  await DB.prepare(`
+    INSERT INTO transactions (
+      transaction_id,
+      member_id,
+      type,
+      points,
+      amount,
+      description
+    )
+    VALUES (?, ?, 'DAILY_LOGIN', ?, ?, ?)
+  `).bind(
+    transactionId,
+    member.member_id,
+    rewardPoints,
+    rewardRupiah,
+    `Reward login harian ${today}`
+  ).run();
+
+  // --------------------------------------------------------
+  // AMBIL DATA TERBARU
+  // --------------------------------------------------------
+
   const updatedMember =
     await getMemberByMemberId(
-      env.DB,
+      DB,
       member.member_id
     );
 
   return {
     success: true,
     alreadyClaimed: false,
-    rewardAmount,
+    transactionId,
+    rewardRupiah,
     rewardPoints,
     member: updatedMember
   };
