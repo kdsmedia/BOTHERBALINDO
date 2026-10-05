@@ -1959,6 +1959,23 @@ async function handleAdminCommand(
     return adminWithdrawalList(DB);
   }
 
+  // Pembelian pending
+  if (command === "7") {
+    return adminPurchaseList(DB);
+  }
+
+  // Approve pembelian
+  if (command.startsWith("APPROVE BUY-")) {
+    const purchaseId =
+      text.substring(8).trim();
+
+    return approvePurchase(
+      DB,
+      purchaseId,
+      member.whatsapp
+    );
+  }
+
   // APPROVE
   if (
     command.startsWith("APPROVE ")
@@ -2016,6 +2033,7 @@ function adminMenu() {
     "4. TAMBAH / KURANGI SALDO",
     "5. PERMINTAAN WITHDRAW",
     "6. KELUAR ADMIN",
+    "7. PEMBELIAN PENDING",
     "",
     "Ketik nomor menu.",
     "",
