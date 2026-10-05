@@ -527,32 +527,24 @@ async function processMessage(message, value, env) {
  * ============================================
  */
 function mainMenu() {
-  return `
----------------------------
-       🤖 HERBALINDO
-       MENU UTAMA
----------------------------
-
-👤 PROFIL
-💰 SALDO
-🛍️ PRODUK
-🛒 BELI
-📅 LOGIN HARIAN
-👥 UNDANG TEMAN
-📲 DOWNLOAD APLIKASI
-
----------------------------
-Ketik nama menu yang ingin
-Anda pilih.
-
-Contoh:
-SALDO
-
----------------------------
-0  = Kembali
-00 = Menu Utama
----------------------------
-`.trim();
+  return [
+    "---------------------------",
+    "       🌿 HERBALINDO",
+    "---------------------------",
+    "",
+    "1. PROFIL",
+    "2. SALDO",
+    "3. PRODUK",
+    "4. DOWNLOAD APLIKASI",
+    "5. LOGIN HARIAN",
+    "6. UNDANG TEMAN",
+    "",
+    "Ketik nomor menu.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
 }
 
 
