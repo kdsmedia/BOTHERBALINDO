@@ -192,6 +192,163 @@ async function processMessage(message, value, env) {
     whatsapp
   );
 
+  // ============================================
+  // BAB 12 — INTEGRASI REFERRAL
+  // ============================================
+
+  // Cek apakah pesan berisi kode referral.
+  // Contoh: DAFTAR 123456
+
+  const referralId =
+    parseReferralCommand(text);
+
+  // ------------------------------------------------------------
+  // PROSES SESSION PENDAFTARAN (INPUT NAMA)
+  // ------------------------------------------------------------
+
+  if (
+    !member &&
+    (await getSession(
+      env.DB,
+      whatsapp
+    )).state === "register_name"
+  ) {
+    const newName =
+      String(text || "").trim();
+
+    if (
+      newName.length < 2 ||
+      newName.length > 100
+    ) {
+      return [
+        "---------------------------",
+        "     🌿 PENDAFTARAN",
+        "---------------------------",
+        "",
+        "Nama tidak valid.",
+        "",
+        "Silakan kirim nama lengkap",
+        "Anda lagi.",
+        "",
+        "Contoh:",
+        "",
+        "Budi Santoso",
+        "",
+        "---------------------------",
+        "",
+        "0. Kembali",
+        "00. Menu Utama",
+        "---------------------------"
+      ].join("\n");
+    }
+
+    const session =
+      await getSession(
+        env.DB,
+        whatsapp
+      );
+
+    const registration =
+      await registerMember(
+        env.DB,
+        whatsapp,
+        newName,
+        session.data.referral_id || null
+      );
+
+    await clearSession(
+      env.DB,
+      whatsapp
+    );
+
+    if (!registration.success) {
+      if (
+        registration.reason ===
+        "already_registered"
+      ) {
+        return alreadyRegisteredPage(
+          registration.member
+        );
+      }
+
+      if (
+        registration.reason ===
+        "invalid_referral"
+      ) {
+        return invalidReferralPage();
+      }
+
+      if (
+        registration.reason ===
+        "self_referral"
+      ) {
+        return selfReferralPage();
+      }
+
+      if (
+        registration.reason ===
+        "inviter_blocked"
+      ) {
+        return blockedInviterPage();
+      }
+
+      return invalidReferralPage();
+    }
+
+    return registrationSuccessPage(
+      registration
+    );
+  }
+
+  // ------------------------------------------------------------
+  // TERIMA KODE REFERRAL → MINTA NAMA
+  // ------------------------------------------------------------
+
+  if (referralId && !member) {
+    const existingMember =
+      await getMemberByWhatsApp(
+        env.DB,
+        whatsapp
+      );
+
+    if (existingMember) {
+      return alreadyRegisteredPage(
+        existingMember
+      );
+    }
+
+    await setSession(
+      env.DB,
+      whatsapp,
+      "register_name",
+      {
+        referral_id: referralId
+      }
+    );
+
+    return [
+      "---------------------------",
+      "     🌿 PENDAFTARAN",
+      "---------------------------",
+      "",
+      "ID Referral:",
+      `${referralId}`,
+      "",
+      "Silakan masukkan",
+      "nama lengkap Anda.",
+      "",
+      "Contoh:",
+      "",
+      "Budi Santoso",
+      "",
+      "---------------------------",
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
+  }
+
   /*
    * ==========================================
    * REGISTRASI OTOMATIS
