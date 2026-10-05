@@ -1272,6 +1272,32 @@ function purchaseStartPage() {
 }
 
 
+// ============================================================
+// BAB 9 — JUMLAH PRODUK
+// ============================================================
+
+function purchaseQuantityPage(productName) {
+  return [
+    "---------------------------",
+    "       JUMLAH PRODUK",
+    "---------------------------",
+    "",
+    `Produk: ${safeText(productName)}`,
+    "",
+    "Berapa jumlah produk yang dibeli?",
+    "",
+    "Contoh:",
+    "1",
+    "",
+    "Kirim jumlah dalam angka.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * LOGIN HARIAN
