@@ -303,20 +303,16 @@ async function processMessage(message, value, env) {
    * ADMIN
    * ==========================================
    */
-  const admin =
-    normalizePhone(env.ADMIN_WHATSAPP);
-
-  if (
-    whatsapp === admin &&
-    isAdminCommand(text)
-  ) {
+  const adminResponse =
     await handleAdminCommand(
-      whatsapp,
+      env.DB,
+      member,
       text,
       env
     );
 
-    return;
+  if (adminResponse) {
+    return adminResponse;
   }
 
   /*
@@ -1744,52 +1740,109 @@ ${catalogUrl}
  * ============================================
  * ADMIN COMMAND
  * ============================================
- */
-function isAdminCommand(text) {
-  const command =
-    normalizeCommand(text);
-
-  return [
-    "ADMIN",
-    "ADMIN PANEL",
-    "MEMBER",
-    "SALDO ADMIN",
-    "WITHDRAW ADMIN"
-  ].includes(command);
-}
-
-
-/**
- * ============================================
- * ADMIN PANEL DASAR
- * ============================================
  *
- * Fitur pengelolaan admin akan ditambahkan
- * pada BAB berikutnya.
+ * Pengelolaan panel admin kini ditangani oleh
+ * handleAdminCommand() pada BAB 8.
  */
+
+
+// ============================================================
+// BAB 8 — ADMIN HANDLER
+// ============================================================
+
 async function handleAdminCommand(
-  whatsapp,
+  DB,
+  member,
   text,
   env
 ) {
-  await sendText(
-    env,
-    whatsapp,
-    `
----------------------------
-       🔐 ADMIN PANEL
----------------------------
+  if (
+    !await isAdmin(
+      env,
+      member.whatsapp
+    )
+  ) {
+    return null;
+  }
 
-1. 👥 KELOLA MEMBER
-2. 💰 KELOLA SALDO
-3. 💸 PERMINTAAN WITHDRAW
+  const command =
+    normalizeCommand(text);
 
----------------------------
-0  = Kembali
-00 = Menu Utama
----------------------------
-`.trim()
-  );
+  // Masuk panel admin
+  if (
+    command === "ADMIN" ||
+    command === "MENU ADMIN"
+  ) {
+    return adminMenu();
+  }
+
+  // Keluar admin
+  if (
+    command === "6" ||
+    command === "KELUAR ADMIN"
+  ) {
+    return mainMenu();
+  }
+
+  // Daftar member
+  if (command === "1") {
+    return adminMemberList(DB);
+  }
+
+  // Cari member
+  if (
+    command === "2"
+  ) {
+    return [
+      "---------------------------",
+      "        CARI MEMBER",
+      "---------------------------",
+      "",
+      "Kirim ID member atau nomor",
+      "WhatsApp member.",
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  // Permintaan withdrawal
+  if (command === "5") {
+    return adminWithdrawalList(DB);
+  }
+
+  // APPROVE
+  if (
+    command.startsWith("APPROVE ")
+  ) {
+    const withdrawalId =
+      text.substring(8).trim();
+
+    return processAdminWithdrawal(
+      DB,
+      withdrawalId,
+      "approve",
+      member.whatsapp
+    );
+  }
+
+  // REJECT
+  if (
+    command.startsWith("REJECT ")
+  ) {
+    const withdrawalId =
+      text.substring(7).trim();
+
+    return processAdminWithdrawal(
+      DB,
+      withdrawalId,
+      "reject",
+      member.whatsapp
+    );
+  }
+
+  return null;
 }
 
 
