@@ -1553,6 +1553,48 @@ function dailyLoginPage(member) {
 }
 
 
+// ============================================================
+// BAB 11 — LOGIN BERHASIL
+// ============================================================
+
+function dailyLoginSuccessPage(result) {
+  const balance =
+    calculateBalance(
+      result.member.points
+    );
+
+  return [
+    "---------------------------",
+    "       🎉 LOGIN BERHASIL",
+    "---------------------------",
+    "",
+    "Reward hari ini berhasil",
+    "ditambahkan ke akun Anda.",
+    "",
+    `REWARD : ${formatRupiah(
+      result.rewardRupiah
+    )}`,
+    `POIN   : ${formatNumber(
+      result.rewardPoints
+    )}`,
+    "",
+    `SALDO SEKARANG: ${formatRupiah(
+      balance
+    )}`,
+    "",
+    `ID TRANSAKSI: ${safeText(
+      result.transactionId
+    )}`,
+    "",
+    "Silakan login kembali besok.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * AMBIL MEMBER BERDASARKAN MEMBER ID
