@@ -326,7 +326,10 @@ async function processMessage(message, value, env) {
       await sendText(
         env,
         whatsapp,
-        await dailyLoginPage(member, env)
+        await dailyLoginPage(
+          member,
+          env
+        )
       );
       break;
 
