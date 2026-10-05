@@ -333,6 +333,18 @@ async function processMessage(message, value, env) {
       );
       break;
 
+    case "UNDANG TEMAN":
+    case "UNDANG":
+    case "REFERRAL":
+    case "REF":
+    case "6":
+      await sendText(
+        env,
+        whatsapp,
+        referralPage(member, env)
+      );
+      break;
+
     case "MENU":
     case "MENU UTAMA":
     case "START":
