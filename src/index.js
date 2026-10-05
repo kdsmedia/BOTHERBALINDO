@@ -701,6 +701,23 @@ function withdrawalConfirmationPage(member, data) {
 }
 
 
+// ============================================================
+// BAB 7 — ID WITHDRAWAL
+// ============================================================
+
+function generateWithdrawalId() {
+  const now = new Date();
+
+  const timestamp =
+    now.getTime().toString(36).toUpperCase();
+
+  const random =
+    Math.floor(1000 + Math.random() * 9000);
+
+  return `WD-${timestamp}-${random}`;
+}
+
+
 /**
  * ============================================
  * DOWNLOAD APLIKASI
