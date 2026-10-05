@@ -1793,6 +1793,39 @@ async function handleAdminCommand(
 }
 
 
+// ============================================================
+// BAB 8 — SESSION ADMIN
+// ============================================================
+
+async function isAdmin(env, whatsapp) {
+  const adminNumber =
+    normalizePhone(env.ADMIN_WHATSAPP || "6285813899649");
+
+  return normalizePhone(whatsapp) === adminNumber;
+}
+
+function adminMenu() {
+  return [
+    "---------------------------",
+    "       🔐 ADMIN PANEL",
+    "---------------------------",
+    "",
+    "1. DAFTAR MEMBER",
+    "2. CARI MEMBER",
+    "3. BLOKIR / BUKA BLOKIR",
+    "4. TAMBAH / KURANGI SALDO",
+    "5. PERMINTAAN WITHDRAW",
+    "6. KELUAR ADMIN",
+    "",
+    "Ketik nomor menu.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
