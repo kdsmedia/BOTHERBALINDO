@@ -444,10 +444,7 @@ async function processMessage(message, value, env) {
       await sendText(
         env,
         whatsapp,
-        await dailyLoginPage(
-          member,
-          env
-        )
+        dailyLoginPage(member)
       );
       break;
 
@@ -1500,83 +1497,57 @@ async function processDailyLogin(member, env) {
  * HALAMAN LOGIN HARIAN
  * ============================================
  */
-async function dailyLoginPage(
-  member,
-  env
-) {
-  const result =
-    await processDailyLogin(
-      member,
-      env
-    );
+function dailyLoginPage(member) {
+  const today =
+    getIndonesiaDate();
 
-  if (result.alreadyClaimed) {
-    return `
----------------------------
-       📅 LOGIN HARIAN
----------------------------
+  const alreadyClaimed =
+    member.daily_login_date === today;
 
-⚠️ Anda sudah melakukan
-login harian hari ini.
-
-🎁 Reward hari ini sudah
-diberikan sebelumnya.
-
-⭐ Poin:
-${formatNumber(member.points)}
-
-💵 Saldo:
-${formatRupiah(
-  calculateBalance(member.points)
-)}
-
----------------------------
-Coba lagi besok.
-
-0  = Kembali
-00 = Menu Utama
----------------------------
-`.trim();
+  if (alreadyClaimed) {
+    return [
+      "---------------------------",
+      "       🎁 LOGIN HARIAN",
+      "---------------------------",
+      "",
+      "Anda sudah mendapatkan",
+      "reward login hari ini.",
+      "",
+      "REWARD:",
+      "Rp100",
+      "",
+      `Tanggal: ${today}`,
+      "",
+      "Silakan kembali lagi besok.",
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
   }
 
-  return `
----------------------------
-       📅 LOGIN HARIAN
----------------------------
-
-✅ LOGIN BERHASIL!
-
-🎁 Reward:
-Rp${formatNumber(
-  result.rewardAmount
-)}
-
-⭐ +${formatNumber(
-  result.rewardPoints
-)} poin
-
-━━━━━━━━━━━━━━━━━━
-
-⭐ Total poin:
-${formatNumber(
-  result.member.points
-)}
-
-💵 Saldo:
-${formatRupiah(
-  calculateBalance(
-    result.member.points
-  )
-)}
-
----------------------------
-Reward login berikutnya
-tersedia besok.
-
-0  = Kembali
-00 = Menu Utama
----------------------------
-`.trim();
+  return [
+    "---------------------------",
+    "       🎁 LOGIN HARIAN",
+    "---------------------------",
+    "",
+    `Tanggal: ${today}`,
+    "",
+    "Reward hari ini:",
+    "",
+    "💰 Rp100",
+    "⭐ 10.000 Poin",
+    "",
+    "Ketik:",
+    "",
+    "LOGIN",
+    "",
+    "untuk mengambil reward.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
 }
 
 
