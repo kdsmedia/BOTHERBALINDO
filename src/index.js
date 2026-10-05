@@ -138,7 +138,11 @@ async function handleWebhook(request, env) {
       const messages = value.messages;
 
       for (const message of messages) {
-        await processMessage(message, value, env);
+        const reply = await processMessage(message, value, env);
+
+        if (typeof reply === "string") {
+          await sendText(env, normalizePhone(message.from), reply);
+        }
       }
     }
   }
@@ -317,44 +321,59 @@ async function processMessage(message, value, env) {
 
   /*
    * ==========================================
-   * NAVIGASI
-   * ==========================================
-   */
-
-  if (text === "00") {
-    await sendText(
-      env,
-      whatsapp,
-      mainMenu()
-    );
-
-    return;
-  }
-
-  if (text === "0") {
-    /*
-     * Untuk fondasi awal, kembali diarahkan
-     * ke menu utama.
-     *
-     * Sistem riwayat halaman akan ditambahkan
-     * pada tahap berikutnya.
-     */
-    await sendText(
-      env,
-      whatsapp,
-      mainMenu()
-    );
-
-    return;
-  }
-
-  /*
-   * ==========================================
    * MENU UTAMA
    * ==========================================
    */
 
   const command = normalizeCommand(text);
+
+  // ------------------------------------------------------------
+  // 0 = Kembali
+  // ------------------------------------------------------------
+
+  if (command === "0") {
+    await clearSession(env.DB, member.whatsapp);
+
+    return mainMenu();
+  }
+
+  // ------------------------------------------------------------
+  // 00 = Menu Utama
+  // ------------------------------------------------------------
+
+  if (command === "00") {
+    await clearSession(env.DB, member.whatsapp);
+
+    return mainMenu();
+  }
+
+  // ------------------------------------------------------------
+  // PROSES SESSION WITHDRAWAL
+  // ------------------------------------------------------------
+
+  const session = await getSession(
+    env.DB,
+    member.whatsapp
+  );
+
+  if (
+    session.state.startsWith("withdraw_") ||
+    (session.state === "balance" && command === "1") ||
+    command === "TARIK" ||
+    command === "TARIK SALDO"
+  ) {
+    const withdrawalResponse =
+      await handleWithdrawal(
+        env.DB,
+        member,
+        text,
+        env
+      );
+
+    if (withdrawalResponse) {
+      return withdrawalResponse;
+    }
+  }
 
   switch (command) {
 
@@ -369,12 +388,14 @@ async function processMessage(message, value, env) {
 
     case "SALDO":
     case "2":
-      await sendText(
-        env,
-        whatsapp,
-        await balancePage(member, env)
+      await setSession(
+        env.DB,
+        member.whatsapp,
+        "balance",
+        {}
       );
-      break;
+
+      return balancePage(member, env);
 
     case "PRODUK":
     case "3":
