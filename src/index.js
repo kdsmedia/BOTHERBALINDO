@@ -1444,12 +1444,15 @@ async function processDailyLogin(
   const transactionId =
     generateTransactionId("LOGIN");
 
-  // --------------------------------------------------------
-  // UPDATE HANYA JIKA HARI INI BELUM CLAIM
-  // --------------------------------------------------------
+  /*
+   * UPDATE menggunakan kondisi tanggal.
+   *
+   * Hanya satu request yang dapat berhasil
+   * apabila terjadi dua request bersamaan.
+   */
 
-  const update =
-    await DB.prepare(`
+  const results = await DB.batch([
+    DB.prepare(`
       UPDATE members
       SET
         points = points + ?,
@@ -1465,13 +1468,44 @@ async function processDailyLogin(
       today,
       member.member_id,
       today
-    ).run();
+    ),
 
-  // Tidak ada perubahan berarti reward
-  // sudah pernah diklaim hari ini.
+    DB.prepare(`
+      INSERT INTO transactions (
+        transaction_id,
+        member_id,
+        type,
+        points,
+        amount,
+        description
+      )
+      SELECT
+        ?,
+        ?,
+        'DAILY_LOGIN',
+        ?,
+        ?,
+        ?
+      WHERE EXISTS (
+        SELECT 1
+        FROM members
+        WHERE member_id = ?
+          AND daily_login_date = ?
+      )
+    `).bind(
+      transactionId,
+      member.member_id,
+      rewardPoints,
+      rewardRupiah,
+      `Reward login harian ${today}`,
+      member.member_id,
+      today
+    )
+  ]);
+
   if (
-    !update.meta ||
-    update.meta.changes !== 1
+    !results[0] ||
+    results[0].meta.changes !== 1
   ) {
     return {
       success: false,
@@ -1480,32 +1514,6 @@ async function processDailyLogin(
         "Anda sudah mengambil reward login hari ini."
     };
   }
-
-  // --------------------------------------------------------
-  // CATAT TRANSAKSI
-  // --------------------------------------------------------
-
-  await DB.prepare(`
-    INSERT INTO transactions (
-      transaction_id,
-      member_id,
-      type,
-      points,
-      amount,
-      description
-    )
-    VALUES (?, ?, 'DAILY_LOGIN', ?, ?, ?)
-  `).bind(
-    transactionId,
-    member.member_id,
-    rewardPoints,
-    rewardRupiah,
-    `Reward login harian ${today}`
-  ).run();
-
-  // --------------------------------------------------------
-  // AMBIL DATA TERBARU
-  // --------------------------------------------------------
 
   const updatedMember =
     await getMemberByMemberId(
