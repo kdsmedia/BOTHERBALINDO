@@ -2074,6 +2074,133 @@ async function handleAdminCommand(
     );
   }
 
+  // ------------------------------------------------------------
+  // BAB 10 — HANDLER TAMBAH PRODUK
+  // ------------------------------------------------------------
+
+  const session =
+    await getSession(
+      DB,
+      member.whatsapp
+    );
+
+  // Nama produk
+  if (
+    session.state === "admin_product_name"
+  ) {
+    const productName =
+      String(text || "").trim();
+
+    if (
+      productName.length < 2 ||
+      productName.length > 150
+    ) {
+      return [
+        "Nama produk tidak valid.",
+        "",
+        "Silakan kirim nama produk lagi."
+      ].join("\n");
+    }
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "admin_product_price",
+      {
+        productName
+      }
+    );
+
+    return adminProductPricePage(
+      productName
+    );
+  }
+
+  // Harga
+  if (
+    session.state === "admin_product_price"
+  ) {
+    const price =
+      Number(
+        String(text || "")
+          .replace(/\D/g, "")
+      );
+
+    if (
+      !Number.isInteger(price) ||
+      price < 0
+    ) {
+      return [
+        "Harga tidak valid.",
+        "",
+        "Contoh:",
+        "25000"
+      ].join("\n");
+    }
+
+    await setSession(
+      DB,
+      member.whatsapp,
+      "admin_product_reward",
+      {
+        productName:
+          session.data.productName,
+        price
+      }
+    );
+
+    return adminProductRewardPage(
+      session.data.productName,
+      price
+    );
+  }
+
+  // Reward
+  if (
+    session.state === "admin_product_reward"
+  ) {
+    const reward =
+      Number(
+        String(text || "")
+          .replace(/\D/g, "")
+      );
+
+    if (
+      !Number.isInteger(reward) ||
+      reward < 0
+    ) {
+      return [
+        "Reward tidak valid.",
+        "",
+        "Contoh:",
+        "500"
+      ].join("\n");
+    }
+
+    const result =
+      await createProduct(
+        DB,
+        session.data.productName,
+        session.data.price,
+        reward
+      );
+
+    await clearSession(
+      DB,
+      member.whatsapp
+    );
+
+    if (!result.success) {
+      return safeText(
+        result.message
+      );
+    }
+
+    return adminProductCreatedPage(
+      result
+    );
+  }
+
   return null;
 }
 
