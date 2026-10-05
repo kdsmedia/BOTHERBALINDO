@@ -1238,30 +1238,36 @@ ${env.APP_DOWNLOAD_URL}
 
 
 // ============================================================
-// BAB 9 — HALAMAN PRODUK
+// BAB 10 — PRODUK MEMBER
 // ============================================================
 
 function productPage(env) {
   const catalogUrl =
-    env.WHATSAPP_CATALOG_URL ||
-    "";
+    env.WHATSAPP_CATALOG_URL || "";
 
   return [
     "---------------------------",
-    "        🛍️ PRODUK",
+    "       🛍️ HERBALINDO",
+    "          PRODUK",
     "---------------------------",
     "",
-    "Silakan lihat produk HERBALINDO",
-    "melalui WhatsApp Catalog.",
+    "Silakan lihat produk resmi",
+    "HERBALINDO melalui WhatsApp",
+    "Catalog.",
     "",
     catalogUrl
       ? `KATALOG:\n${catalogUrl}`
-      : "Link katalog belum dikonfigurasi.",
+      : "Katalog belum dikonfigurasi.",
     "",
     "Setelah melakukan pembelian,",
-    "admin akan memverifikasi transaksi.",
+    "gunakan:",
     "",
-    "Reward pembelian:",
+    "BELI",
+    "",
+    "untuk mengajukan verifikasi",
+    "pembelian.",
+    "",
+    "Reward:",
     "Rp500 / produk",
     "",
     "0. Kembali",
