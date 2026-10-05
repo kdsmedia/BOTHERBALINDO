@@ -2952,6 +2952,75 @@ async function adminPurchaseList(DB) {
 
 
 // ============================================================
+// BAB 10 — DAFTAR PRODUK ADMIN
+// ============================================================
+
+async function adminProductList(DB) {
+  const result = await DB.prepare(`
+    SELECT
+      id,
+      product_name,
+      price,
+      reward_points,
+      status,
+      created_at,
+      updated_at
+    FROM products
+    ORDER BY id DESC
+    LIMIT 50
+  `).all();
+
+  if (
+    !result.results ||
+    result.results.length === 0
+  ) {
+    return [
+      "---------------------------",
+      "       DAFTAR PRODUK",
+      "---------------------------",
+      "",
+      "Belum ada produk.",
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  const lines = [
+    "---------------------------",
+    "       DAFTAR PRODUK",
+    "---------------------------",
+    ""
+  ];
+
+  for (const product of result.results) {
+    lines.push(
+      `ID       : ${product.id}`,
+      `PRODUK   : ${safeText(product.product_name)}`,
+      `HARGA    : ${formatRupiah(product.price)}`,
+      `REWARD   : ${formatRupiah(
+        product.reward_points / 100
+      )}`,
+      `STATUS   : ${safeText(product.status)}`,
+      "---------------------------"
+    );
+  }
+
+  lines.push(
+    "",
+    "Maksimal 50 produk ditampilkan.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  );
+
+  return lines.join("\n");
+}
+
+
+// ============================================================
 // BAB 9 — PROSES PENGAJUAN PEMBELIAN
 // ============================================================
 
