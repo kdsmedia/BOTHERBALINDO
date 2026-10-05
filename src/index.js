@@ -1246,6 +1246,32 @@ function productPage(env) {
 }
 
 
+// ============================================================
+// BAB 9 — MULAI PENGAJUAN PEMBELIAN
+// ============================================================
+
+function purchaseStartPage() {
+  return [
+    "---------------------------",
+    "     VERIFIKASI PEMBELIAN",
+    "---------------------------",
+    "",
+    "Silakan kirim nama produk",
+    "yang telah Anda beli.",
+    "",
+    "Contoh:",
+    "HERBAL DIET ALAMI",
+    "",
+    "Pastikan nama produk sesuai",
+    "dengan produk yang dibeli.",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * LOGIN HARIAN
