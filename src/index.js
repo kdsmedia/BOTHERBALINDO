@@ -2817,6 +2817,88 @@ async function approvePurchase(
 }
 
 
+// ============================================================
+// BAB 9 — DAFTAR PEMBELIAN PENDING
+// ============================================================
+
+async function adminPurchaseList(DB) {
+  const result = await DB.prepare(`
+    SELECT
+      p.purchase_id,
+      p.member_id,
+      m.name,
+      m.whatsapp,
+      p.product_name,
+      p.quantity,
+      p.total_amount,
+      p.reward_points,
+      p.status,
+      p.created_at
+    FROM purchases p
+    JOIN members m
+      ON m.member_id = p.member_id
+    WHERE p.status = 'pending'
+    ORDER BY p.id ASC
+    LIMIT 20
+  `).all();
+
+  if (
+    !result.results ||
+    result.results.length === 0
+  ) {
+    return [
+      "---------------------------",
+      "   PEMBELIAN PENDING",
+      "---------------------------",
+      "",
+      "Tidak ada pembelian pending.",
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  const lines = [
+    "---------------------------",
+    "   PEMBELIAN PENDING",
+    "---------------------------",
+    ""
+  ];
+
+  for (const item of result.results) {
+    lines.push(
+      `ID: ${safeText(item.purchase_id)}`,
+      `Member: ${safeText(item.member_id)}`,
+      `Nama: ${safeText(item.name)}`,
+      `WA: ${safeText(formatPhone(item.whatsapp))}`,
+      `Produk: ${safeText(item.product_name)}`,
+      `Jumlah: ${item.quantity}`,
+      `Total: ${formatRupiah(item.total_amount)}`,
+      `Reward: ${formatRupiah(
+        item.reward_points / 100
+      )}`,
+      `Tanggal: ${safeText(item.created_at)}`,
+      "---------------------------"
+    );
+  }
+
+  lines.push(
+    "",
+    "Untuk menyetujui:",
+    "APPROVE BUY-ID",
+    "",
+    "Contoh:",
+    "APPROVE BUY-ABC123-1234",
+    "",
+    "0. Kembali",
+    "00. Menu Utama"
+  );
+
+  return lines.join("\n");
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
