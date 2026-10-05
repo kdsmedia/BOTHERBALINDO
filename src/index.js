@@ -1326,6 +1326,39 @@ function purchaseAmountPage(productName, quantity) {
 }
 
 
+// ============================================================
+// BAB 9 — KONFIRMASI PEMBELIAN
+// ============================================================
+
+function purchaseConfirmationPage(data) {
+  return [
+    "---------------------------",
+    "    KONFIRMASI PEMBELIAN",
+    "---------------------------",
+    "",
+    `PRODUK   : ${safeText(data.productName)}`,
+    `JUMLAH   : ${data.quantity}`,
+    `TOTAL    : ${formatRupiah(data.totalAmount)}`,
+    "",
+    "REWARD:",
+    "Rp500 / produk",
+    "",
+    `TOTAL REWARD: ${formatRupiah(
+      data.quantity * 500
+    )}`,
+    "",
+    "Apakah data sudah benar?",
+    "",
+    "1. YA, KIRIM VERIFIKASI",
+    "2. BATAL",
+    "",
+    "0. Kembali",
+    "00. Menu Utama",
+    "---------------------------"
+  ].join("\n");
+}
+
+
 /**
  * ============================================
  * LOGIN HARIAN
