@@ -2139,6 +2139,86 @@ async function adminChangeBalance(
 }
 
 
+// ============================================================
+// BAB 8 — PERMINTAAN WITHDRAW
+// ============================================================
+
+async function adminWithdrawalList(DB) {
+  const result = await DB.prepare(`
+    SELECT
+      w.withdrawal_id,
+      w.member_id,
+      m.name,
+      m.whatsapp,
+      w.amount,
+      w.method,
+      w.account_number,
+      w.account_name,
+      w.status,
+      w.created_at
+    FROM withdrawals w
+    JOIN members m
+      ON m.member_id = w.member_id
+    WHERE w.status = 'pending'
+    ORDER BY w.id ASC
+    LIMIT 20
+  `).all();
+
+  if (
+    !result.results ||
+    result.results.length === 0
+  ) {
+    return [
+      "---------------------------",
+      "   PERMINTAAN WITHDRAW",
+      "---------------------------",
+      "",
+      "Tidak ada withdraw pending.",
+      "",
+      "0. Kembali",
+      "00. Menu Utama",
+      "---------------------------"
+    ].join("\n");
+  }
+
+  const lines = [
+    "---------------------------",
+    "   PERMINTAAN WITHDRAW",
+    "---------------------------",
+    ""
+  ];
+
+  for (const item of result.results) {
+    lines.push(
+      `ID: ${safeText(item.withdrawal_id)}`,
+      `Member: ${safeText(item.member_id)}`,
+      `Nama: ${safeText(item.name)}`,
+      `WA: ${safeText(formatPhone(item.whatsapp))}`,
+      `Nominal: ${formatRupiah(item.amount)}`,
+      `Metode: ${safeText(item.method)}`,
+      `Akun: ${safeText(item.account_number)}`,
+      `Nama Akun: ${safeText(item.account_name)}`,
+      `Status: ${safeText(item.status)}`,
+      `Tanggal: ${safeText(item.created_at)}`,
+      "---------------------------"
+    );
+  }
+
+  lines.push(
+    "",
+    "Untuk memproses:",
+    "APPROVE ID_WITHDRAW",
+    "atau",
+    "REJECT ID_WITHDRAW",
+    "",
+    "0. Kembali",
+    "00. Menu Utama"
+  );
+
+  return lines.join("\n");
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
