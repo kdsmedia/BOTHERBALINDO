@@ -2593,6 +2593,76 @@ function generatePurchaseId() {
 }
 
 
+// ============================================================
+// BAB 9 — SIMPAN PEMBELIAN
+// ============================================================
+
+async function createPurchase(
+  DB,
+  member,
+  data
+) {
+  const quantity =
+    Number(data.quantity);
+
+  const totalAmount =
+    Number(data.totalAmount);
+
+  if (
+    !Number.isInteger(quantity) ||
+    quantity < 1
+  ) {
+    return {
+      success: false,
+      message: "Jumlah produk tidak valid."
+    };
+  }
+
+  if (
+    !Number.isInteger(totalAmount) ||
+    totalAmount <= 0
+  ) {
+    return {
+      success: false,
+      message: "Total pembelian tidak valid."
+    };
+  }
+
+  const purchaseId =
+    generatePurchaseId();
+
+  const rewardPoints =
+    quantity * 50000;
+
+  await DB.prepare(`
+    INSERT INTO purchases (
+      purchase_id,
+      member_id,
+      product_name,
+      quantity,
+      total_amount,
+      reward_points,
+      status,
+      reward_given
+    )
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', 0)
+  `).bind(
+    purchaseId,
+    member.member_id,
+    data.productName,
+    quantity,
+    totalAmount,
+    rewardPoints
+  ).run();
+
+  return {
+    success: true,
+    purchaseId,
+    rewardPoints
+  };
+}
+
+
 /**
  * ============================================
  * NORMALISASI PERINTAH
