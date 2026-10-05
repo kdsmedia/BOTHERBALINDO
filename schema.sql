@@ -39,6 +39,12 @@ CREATE TABLE IF NOT EXISTS products (
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_products_status
+ON products(status);
+
+CREATE INDEX IF NOT EXISTS idx_products_name
+ON products(product_name);
+
 -- ============================================
 -- TABEL TRANSAKSI
 -- ============================================
