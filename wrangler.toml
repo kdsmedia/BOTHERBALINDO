@@ -1,0 +1,20 @@
+name = "herbalindo-whatsapp-bot"
+main = "src/index.js"
+compatibility_date = "2026-10-05"
+
+# ============================================
+# CLOUDFLARE D1 DATABASE
+# ============================================
+
+[[d1_databases]]
+binding = "DB"
+database_name = "herbalindo_db"
+database_id = "GANTI_DENGAN_DATABASE_ID_ANDA"
+
+# ============================================
+# WORKER SETTINGS
+# ============================================
+
+[vars]
+ADMIN_WHATSAPP = "6285813899649"
+APP_DOWNLOAD_URL = "https://play.google.com/store/apps/details?id=com.altomedia.herbalindo"
