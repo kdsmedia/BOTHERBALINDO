@@ -397,6 +397,54 @@ async function processMessage(message, value, env) {
     }
   }
 
+  // ------------------------------------------------------------
+  // BAB 11 — HANDLER LOGIN HARIAN
+  // ------------------------------------------------------------
+
+  if (
+    command === "LOGIN" ||
+    command === "LOGIN HARIAN" ||
+    command === "5"
+  ) {
+    const today =
+      getIndonesiaDate();
+
+    // Tampilkan status terlebih dahulu
+    if (
+      member.daily_login_date === today
+    ) {
+      return dailyLoginPage(member);
+    }
+
+    const result =
+      await processDailyLogin(
+        env.DB,
+        member
+      );
+
+    if (
+      !result.success
+    ) {
+      return [
+        "---------------------------",
+        "       LOGIN HARIAN",
+        "---------------------------",
+        "",
+        safeText(result.message),
+        "",
+        "Silakan kembali lagi besok.",
+        "",
+        "0. Kembali",
+        "00. Menu Utama",
+        "---------------------------"
+      ].join("\n");
+    }
+
+    return dailyLoginSuccessPage(
+      result
+    );
+  }
+
   switch (command) {
 
     case "PROFIL":
@@ -435,16 +483,6 @@ async function processMessage(message, value, env) {
         env,
         whatsapp,
         downloadPage(env)
-      );
-      break;
-
-    case "LOGIN HARIAN":
-    case "LOGIN":
-    case "5":
-      await sendText(
-        env,
-        whatsapp,
-        dailyLoginPage(member)
       );
       break;
 
